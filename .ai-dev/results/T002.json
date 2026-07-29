@@ -3,9 +3,9 @@
   "implementer_id": "t002_entry",
   "reviewer_id": "root",
   "base_sha": "30e267f",
-  "head_sha": "2be77ac",
+  "head_sha": "19aba31",
   "scope_check": "pass",
-  "review_status": "passed",
+  "review_status": "pass",
   "id": "T002",
   "status": "completed",
   "scope_status": "pass",
@@ -27,11 +27,26 @@
     ]
   },
   "verification_commands": [
-    "npm run test -- --run",
-    "npm run lint",
-    "npm run typecheck",
-    "npm run build",
-    "git diff --check"
+    {
+      "command": "npm run test -- --run",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
   ],
   "verification": [
     {
