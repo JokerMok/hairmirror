@@ -1,0 +1,37 @@
+{
+  "total": 100,
+  "started": 83,
+  "uploaded": 73,
+  "consented": 70,
+  "completed": 68,
+  "selected": 38,
+  "avgLatencyMs": 711,
+  "p95LatencyMs": 737,
+  "segments": {
+    "明确换发需求者": {
+      "n": 32,
+      "completed": 27,
+      "selected": 16
+    },
+    "谨慎决策者": {
+      "n": 24,
+      "completed": 12,
+      "selected": 7
+    },
+    "社交尝鲜者": {
+      "n": 20,
+      "completed": 12,
+      "selected": 7
+    },
+    "低维护务实者": {
+      "n": 16,
+      "completed": 15,
+      "selected": 8
+    },
+    "隐私高敏用户": {
+      "n": 8,
+      "completed": 2,
+      "selected": 0
+    }
+  }
+}

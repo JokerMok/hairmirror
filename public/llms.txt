@@ -1,0 +1,23 @@
+# HairMirror
+
+> HairMirror is a web-based AI hairstyle preview tool. A signed-in user uploads one front-facing photo and compares three hairstyle directions before deciding on a haircut.
+
+## Canonical pages
+
+- [Home](https://web-production-eeda8.up.railway.app/): Product overview, examples, and hairstyle studio
+- [Pricing](https://web-production-eeda8.up.railway.app/pricing): Current personal pack and salon plan pricing
+- [FAQ](https://web-production-eeda8.up.railway.app/faq): Product, billing, privacy, and result-limit answers
+- [Privacy Policy](https://web-production-eeda8.up.railway.app/privacy): Photo processing, retention, deletion, and service providers
+- [Terms of Service](https://web-production-eeda8.up.railway.app/terms): Account, billing, cancellation, and acceptable-use terms
+
+## Product facts
+
+- Sign-in is required before uploading a photo.
+- A new account receives one free complete preview with three hairstyle directions.
+- The Personal Preview Pack costs $1.99 USD and includes five complete previews. Credits do not expire; failed or cancelled jobs do not consume a credit.
+- Salon Pro costs $29 USD per month and includes 200 complete previews shared by the salon owner and staff accounts.
+- Source photos are deleted after successful generation or cancellation. After repeated failure, source photos are retained for no more than 24 hours.
+- Generated results and related choices are retained for 30 days by default and can be deleted sooner.
+- AI previews are planning references, not guarantees of an identical real-world haircut.
+
+For the most current price, tax, and billing terms, use the HairMirror pricing page and the linked Gumroad checkout.

@@ -1,0 +1,31 @@
+# HairMirror: AI Hairstyle Preview
+
+HairMirror helps individuals and salons compare haircut directions before a cut. The user signs in, uploads a clear front-facing photo, chooses current length, target length, styling goal, chemical-treatment preference, and daily styling time, then receives three hairstyle directions with upkeep and feasibility notes.
+
+## Access and free preview
+
+Browsing examples, pricing, the FAQ, privacy policy, and terms does not require an account. Photo upload and generation require sign-in. Each new account receives one free complete preview. A complete preview returns three hairstyle directions.
+
+## Personal pricing
+
+The Personal Preview Pack is a one-time purchase of $1.99 USD for five complete previews. Each complete preview returns three hairstyle directions. Purchased credits do not expire. Failed or cancelled generation tasks do not consume a credit. Gumroad handles checkout and purchase verification.
+
+## Salon pricing
+
+Salon Pro is a $29 USD monthly subscription for 200 complete previews per billing period. The allowance is shared by the salon owner and staff accounts. Gumroad handles checkout, taxes, renewal, cancellation, and subscription verification.
+
+## Photo privacy and retention
+
+The service processes uploaded photos, hairstyle preferences, generated options, selections, and feedback. Source photos are deleted immediately after successful generation or cancellation and kept for no more than 24 hours after repeated failure. Generated results, options, selections, and feedback are retained for 30 days by default and may be deleted sooner. Photos are not used to create face-recognition templates or for model training without separate explicit consent.
+
+## Limitations
+
+HairMirror is a visual planning and stylist-communication tool. Generated images do not guarantee an identical haircut. Real results depend on hair texture, density, current length, styling, chemical treatment, and the stylist's technique. Users should confirm feasibility with a professional.
+
+## Primary sources
+
+- Product: https://web-production-eeda8.up.railway.app/
+- Pricing: https://web-production-eeda8.up.railway.app/pricing
+- FAQ: https://web-production-eeda8.up.railway.app/faq
+- Privacy: https://web-production-eeda8.up.railway.app/privacy
+- Terms: https://web-production-eeda8.up.railway.app/terms

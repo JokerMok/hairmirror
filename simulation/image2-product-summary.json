@@ -1,0 +1,15 @@
+{
+  "users": 100,
+  "started": 82,
+  "uploaded": 78,
+  "completed": 72,
+  "selected": 52,
+  "willingToSalon": 49,
+  "willingToPay": 7,
+  "identity": "3.71",
+  "realism": "4.18",
+  "distinction": "4.53",
+  "usefulness": "4.13",
+  "privacyTrust": "4.09",
+  "avgLatencyMs": 706
+}

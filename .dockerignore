@@ -1,0 +1,14 @@
+.git
+.next
+node_modules
+coverage
+backups
+data
+test-data
+test-dataset
+simulation
+documentation
+*.log
+.env*
+*.tsbuildinfo
+.DS_Store

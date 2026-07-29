@@ -19,10 +19,18 @@
 
 # production
 /build
+/data/*.db
+/data/*.db-*
+/data/*.key
+/data/generated/
+/data/uploads/
+/backups/
 
 # misc
 .DS_Store
 *.pem
+__pycache__/
+*.pyc
 
 # debug
 npm-debug.log*
