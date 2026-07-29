@@ -1,0 +1,20 @@
+{
+  "task_id": "T001",
+  "executor": "cloud",
+  "implementer_id": "/root/t001_domain",
+  "reviewer_id": "/root",
+  "base_sha": "30e267f2ccd408f704b2b092eb30d478c17c521c",
+  "head_sha": "abca690357fe0932e60bc7f62a160da9d4f7a396",
+  "scope_check": "pass",
+  "verification_commands": [
+    {"command": "npm run typecheck", "exit_code": 0},
+    {"command": "npm run test -- --run tests/unit/consultation-domain.test.ts tests/unit/feature-flags.test.ts", "exit_code": 0},
+    {"command": "npm run test", "exit_code": 0},
+    {"command": "npm run lint", "exit_code": 0},
+    {"command": "git diff --check", "exit_code": 0},
+    {"command": "python3 /Users/jokermok/.codex/skills/orchestrate-hybrid-development/scripts/scope_guard.py check --project-root . --task-id T001 --attempt 2", "exit_code": 0}
+  ],
+  "review_status": "pass",
+  "review_findings": [],
+  "scope_attempt": 2
+}
