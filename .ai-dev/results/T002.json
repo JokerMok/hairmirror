@@ -1,0 +1,51 @@
+{
+  "id": "T002",
+  "status": "completed",
+  "scope_status": "pass",
+  "implementation_commit": "35630b2",
+  "scope": {
+    "allowed_paths_only": true,
+    "changed_paths": [
+      "src/app/page.tsx",
+      "src/components/role-entry.tsx",
+      "src/app/consumer/page.tsx",
+      "src/app/salon/page.tsx",
+      "tests/ui/role-entry.test.tsx"
+    ],
+    "out_of_scope_paths": [],
+    "excluded_untracked_paths": [
+      ".ai-dev/context/.cache/",
+      ".ai-dev/context/T002.json",
+      ".ai-dev/context/T002.md"
+    ]
+  },
+  "verification": [
+    {
+      "command": "npm run test -- --run",
+      "result": "passed",
+      "details": "22 files passed; 64 tests passed"
+    },
+    {
+      "command": "npm run lint",
+      "result": "passed"
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "npm run build",
+      "result": "passed",
+      "details": "Next.js production build passed; the initial sandbox attempt was blocked by Turbopack port permissions and the escalated rerun passed"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "notes": [
+    "Role selection is persisted in browser localStorage.",
+    "Existing StudioWizard pricing navigation remains unchanged because it is outside T002's allowed paths.",
+    "Salon AI analysis, recommendation, report, and history implementation is deferred to T003/T004."
+  ]
+}
