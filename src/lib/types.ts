@@ -90,3 +90,74 @@ export interface TaskFeedback {
   issue?: string;
   createdAt: string;
 }
+
+/** Roles that can participate in an AI hair consultation. */
+export type ConsultationActorRole = "consumer" | "stylist" | "salon_admin";
+
+export type ConsultationStatus =
+  | "draft"
+  | "analyzing"
+  | "ready"
+  | "shared"
+  | "completed"
+  | "archived";
+
+export const CONSULTATION_STATUSES: readonly ConsultationStatus[] = [
+  "draft",
+  "analyzing",
+  "ready",
+  "shared",
+  "completed",
+  "archived",
+];
+
+export type ConsultationErrorCode =
+  | "CONSULTATION_NOT_FOUND"
+  | "CONSULTATION_FORBIDDEN"
+  | "INVALID_STATUS_TRANSITION"
+  | "INVALID_CONSULTATION_INPUT"
+  | "RECOMMENDATION_NOT_FOUND"
+  | "TENANT_REQUIRED";
+
+export interface Salon {
+  id: string;
+  name: string;
+  stylistName?: string | null;
+  email?: string | null;
+  ownerUserId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecommendationExecution {
+  sides?: string;
+  top?: string;
+  texture?: string;
+  style?: string;
+  [key: string]: string | undefined;
+}
+
+export interface Recommendation {
+  id: string;
+  consultationId: string;
+  styleName: string;
+  rationale: string;
+  execution: RecommendationExecution;
+  imageUrl?: string | null;
+  rank: number;
+  createdAt: string;
+}
+
+export interface Consultation {
+  id: string;
+  salonId: string | null;
+  customerUserId: string | null;
+  stylistUserId: string | null;
+  status: ConsultationStatus;
+  sourcePhotoPath: string | null;
+  analysisResult: Record<string, unknown> | null;
+  recommendations: Recommendation[];
+  selectedRecommendationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

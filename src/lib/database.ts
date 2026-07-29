@@ -315,6 +315,38 @@ function createDatabase(path: string) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS salons (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      stylist_name TEXT,
+      email TEXT,
+      owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS consultations (
+      id TEXT PRIMARY KEY,
+      salon_id TEXT REFERENCES salons(id) ON DELETE SET NULL,
+      customer_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      stylist_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      status TEXT NOT NULL CHECK(status IN ('draft','analyzing','ready','shared','completed','archived')),
+      source_photo_path TEXT,
+      analysis_json TEXT,
+      generated_images_json TEXT,
+      selected_recommendation_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS recommendations (
+      id TEXT PRIMARY KEY,
+      consultation_id TEXT NOT NULL REFERENCES consultations(id) ON DELETE CASCADE,
+      style_name TEXT NOT NULL,
+      rationale TEXT NOT NULL,
+      execution_json TEXT NOT NULL,
+      image_url TEXT,
+      rank INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON auth_sessions(token_hash);
     CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_records(user_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON generation_jobs(status,queued_at);
@@ -331,6 +363,9 @@ function createDatabase(path: string) {
     CREATE INDEX IF NOT EXISTS idx_paddle_subscription_user ON paddle_subscriptions(user_id,status);
     CREATE INDEX IF NOT EXISTS idx_paddle_transaction_user ON paddle_transactions(user_id,billed_at DESC);
     CREATE INDEX IF NOT EXISTS idx_gumroad_verify ON gumroad_licenses(last_verified_at,status);
+    CREATE INDEX IF NOT EXISTS idx_consultations_salon ON consultations(salon_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_consultations_customer ON consultations(customer_user_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_recommendations_consultation ON recommendations(consultation_id,rank);
   `);
   const userColumns = database
     .prepare("PRAGMA table_info(users)")
