@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "planner": "orchestrate-hybrid-development.scheduler",
+  "project_root": "/Users/jokermok/Documents/工作文件/臻一/ai-hairstyle-studio",
+  "valid": true,
+  "errors": [],
+  "cycles_or_blocked": [],
+  "conflicts": [
+    {
+      "left": "T004",
+      "right": "T005",
+      "path_left": "src/app/api/consultations",
+      "path_right": "src/app/api/consultations/history/route.ts",
+      "reason": "shared_write_path"
+    },
+    {
+      "left": "T004",
+      "right": "T006",
+      "path_left": "src/app/api/consultations/route.ts",
+      "path_right": "src/app/api/consultations",
+      "reason": "shared_write_path"
+    },
+    {
+      "left": "T005",
+      "right": "T006",
+      "path_left": "src/app/api/consultations/history/route.ts",
+      "path_right": "src/app/api/consultations",
+      "reason": "shared_write_path"
+    }
+  ],
+  "completed": [],
+  "blocked": [],
+  "planned": [
+    "T001",
+    "T002",
+    "T003",
+    "T004",
+    "T008",
+    "T009",
+    "T005",
+    "T007",
+    "T006",
+    "T010"
+  ],
+  "waves": [
+    {
+      "wave": 1,
+      "tasks": [
+        "T001",
+        "T002",
+        "T003"
+      ],
+      "dispatches": [
+        {
+          "task_id": "T001",
+          "concurrency_group": "wave-1-group-1",
+          "executor": "cloud",
+          "risk": "high",
+          "depends_on": [],
+          "allowed_paths": [
+            "src/lib/types.ts",
+            "src/lib/database.ts",
+            "src/lib/consultation-domain.ts",
+            "src/lib/feature-flags.ts",
+            "tests/unit/consultation-domain.test.ts",
+            "tests/unit/feature-flags.test.ts",
+            "documentation/02-technical/consultation-data-model.md"
+          ],
+          "context_ref": ".ai-dev/context/T001.json",
+          "serialized_after": []
+        },
+        {
+          "task_id": "T002",
+          "concurrency_group": "wave-1-group-1",
+          "executor": "local",
+          "risk": "medium",
+          "depends_on": [],
+          "allowed_paths": [
+            "src/app/page.tsx",
+            "src/components/home-showcase.tsx",
+            "src/components/role-entry.tsx",
+            "src/app/salon/page.tsx",
+            "src/app/consumer/page.tsx",
+            "tests/ui/role-entry.test.tsx"
+          ],
+          "context_ref": ".ai-dev/context/T002.json",
+          "serialized_after": []
+        },
+        {
+          "task_id": "T003",
+          "concurrency_group": "wave-1-group-1",
+          "executor": "cloud",
+          "risk": "high",
+          "depends_on": [],
+          "allowed_paths": [
+            "src/lib/ai-consultation.ts",
+            "src/lib/ai-consultation-schema.ts",
+            "src/lib/ai-consultation-fallback.ts",
+            "tests/unit/ai-consultation.test.ts",
+            "tests/unit/ai-consultation-schema.test.ts"
+          ],
+          "context_ref": ".ai-dev/context/T003.json",
+          "serialized_after": []
+        }
+      ]
+    },
+    {
+      "wave": 2,
+      "tasks": [
+        "T004",
+        "T008",
+        "T009"
+      ],
+      "dispatches": [
+        {
+          "task_id": "T004",
+          "concurrency_group": "wave-2-group-1",
+          "executor": "cloud",
+          "risk": "high",
+          "depends_on": [
+            "T001",
+            "T003"
+          ],
+          "allowed_paths": [
+            "src/app/salon/consultations/new/page.tsx",
+            "src/components/salon-consultation-flow.tsx",
+            "src/app/api/consultations/route.ts",
+            "src/app/api/consultations",
+            "tests/api/consultations.test.ts",
+            "tests/ui/salon-consultation-flow.test.tsx"
+          ],
+          "context_ref": ".ai-dev/context/T004.json",
+          "serialized_after": []
+        },
+        {
+          "task_id": "T008",
+          "concurrency_group": "wave-2-group-1",
+          "executor": "local",
+          "risk": "low",
+          "depends_on": [
+            "T001",
+            "T002"
+          ],
+          "allowed_paths": [
+            "src/app/pricing/page.tsx",
+            "src/lib/billing-feature-flags.ts",
+            "tests/unit/billing-feature-flags.test.ts"
+          ],
+          "context_ref": ".ai-dev/context/T008.json",
+          "serialized_after": []
+        },
+        {
+          "task_id": "T009",
+          "concurrency_group": "wave-2-group-1",
+          "executor": "cloud",
+          "risk": "medium",
+          "depends_on": [
+            "T001"
+          ],
+          "allowed_paths": [
+            "src/lib/analytics-events.ts",
+            "src/app/api/analytics/route.ts",
+            "tests/unit/analytics-events.test.ts",
+            "documentation/03-quality/v03-metrics.md"
+          ],
+          "context_ref": ".ai-dev/context/T009.json",
+          "serialized_after": []
+        }
+      ]
+    },
+    {
+      "wave": 3,
+      "tasks": [
+        "T005",
+        "T007"
+      ],
+      "dispatches": [
+        {
+          "task_id": "T005",
+          "concurrency_group": "wave-3-group-1",
+          "executor": "cloud",
+          "risk": "high",
+          "depends_on": [
+            "T001",
+            "T004"
+          ],
+          "allowed_paths": [
+            "src/app/account/page.tsx",
+            "src/app/account/consultations/page.tsx",
+            "src/app/api/consultations/history/route.ts",
+            "src/lib/consultation-access.ts",
+            "tests/api/consultation-history.test.ts",
+            "tests/unit/consultation-access.test.ts"
+          ],
+          "context_ref": ".ai-dev/context/T005.json",
+          "serialized_after": []
+        },
+        {
+          "task_id": "T007",
+          "concurrency_group": "wave-3-group-1",
+          "executor": "cloud",
+          "risk": "high",
+          "depends_on": [
+            "T003",
+            "T004"
+          ],
+          "allowed_paths": [
+            "src/components/studio-wizard.tsx",
+            "src/lib/generation-provider.ts",
+            "src/lib/generation-queue.ts",
+            "tests/unit/generation-consultation.test.ts",
+            "tests/e2e/generation-fallback.spec.ts"
+          ],
+          "context_ref": ".ai-dev/context/T007.json",
+          "serialized_after": []
+        }
+      ]
+    },
+    {
+      "wave": 4,
+      "tasks": [
+        "T006"
+      ],
+      "dispatches": [
+        {
+          "task_id": "T006",
+          "concurrency_group": "wave-4-group-1",
+          "executor": "local",
+          "risk": "low",
+          "depends_on": [
+            "T003",
+            "T004"
+          ],
+          "allowed_paths": [
+            "src/lib/communication-card.ts",
+            "src/components/communication-card.tsx",
+            "src/app/api/consultations",
+            "tests/unit/communication-card.test.ts",
+            "tests/ui/communication-card.test.tsx"
+          ],
+          "context_ref": ".ai-dev/context/T006.json",
+          "serialized_after": [
+            "T005"
+          ]
+        }
+      ]
+    },
+    {
+      "wave": 5,
+      "tasks": [
+        "T010"
+      ],
+      "dispatches": [
+        {
+          "task_id": "T010",
+          "concurrency_group": "wave-5-group-1",
+          "executor": "cloud",
+          "risk": "high",
+          "depends_on": [
+            "T001",
+            "T002",
+            "T003",
+            "T004",
+            "T005",
+            "T006",
+            "T007",
+            "T008",
+            "T009"
+          ],
+          "allowed_paths": [
+            "tests/e2e/v03-consultation.spec.ts",
+            "tests/e2e/v03-permissions.spec.ts",
+            "tests/e2e/v03-regression.spec.ts",
+            "documentation/03-quality/v03-acceptance-report.md"
+          ],
+          "context_ref": ".ai-dev/context/T010.json",
+          "serialized_after": []
+        }
+      ]
+    }
+  ],
+  "dispatch_policy": "仅输出计划；由主协调器在门禁、上下文包和独立 worktree 准备后派发"
+}

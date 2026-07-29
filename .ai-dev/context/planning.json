@@ -1,0 +1,9 @@
+{
+  "base_sha": "a36816b",
+  "project_root": "/Users/jokermok/Documents/工作文件/臻一/ai-hairstyle-studio",
+  "inspected": ["src/app", "src/components", "src/lib", "tests", "documentation/01-product", "documentation/02-technical", "documentation/03-quality"],
+  "excluded_snapshot_paths": [".next", "node_modules", "coverage", "test-results", ".git", ".env*"],
+  "mode": "planning-only",
+  "budget": {"max_context_tokens": 12000, "max_task_packages": 10}
+}
+
