@@ -1,4 +1,11 @@
 {
+  "task_id": "T002",
+  "implementer_id": "t002_entry",
+  "reviewer_id": "root",
+  "base_sha": "30e267f",
+  "head_sha": "2be77ac",
+  "scope_check": "pass",
+  "review_status": "passed",
   "id": "T002",
   "status": "completed",
   "scope_status": "pass",
@@ -19,6 +26,13 @@
       ".ai-dev/context/T002.md"
     ]
   },
+  "verification_commands": [
+    "npm run test -- --run",
+    "npm run lint",
+    "npm run typecheck",
+    "npm run build",
+    "git diff --check"
+  ],
   "verification": [
     {
       "command": "npm run test -- --run",
