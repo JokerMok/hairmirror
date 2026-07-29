@@ -1,4 +1,5 @@
 import { StudioWizard } from "@/components/studio-wizard";
+import { RoleEntry } from "@/components/role-entry";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE, getUserByToken } from "@/lib/auth";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
@@ -29,25 +30,9 @@ export default async function Home() {
             "Save hairstyle choices and generation history",
             "Delete generated results at any time",
           ],
-          offers: [
-            {
-              "@type": "Offer",
-              name: "First complete preview",
-              price: "0",
-              priceCurrency: "USD",
-              description: "One free complete preview after sign-in",
-            },
-            {
-              "@type": "Offer",
-              name: "Personal Preview Pack",
-              price: "1.99",
-              priceCurrency: "USD",
-              url: absoluteUrl("/pricing"),
-              description: "Five complete hairstyle previews",
-            },
-          ],
         }}
       />
+      <RoleEntry locale={locale} />
       <StudioWizard locale={locale} authenticated={authenticated} />
     </>
   );
