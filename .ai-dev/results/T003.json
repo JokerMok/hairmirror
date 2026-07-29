@@ -1,0 +1,77 @@
+{
+  "task_id": "T003",
+  "implementer_id": "t003_ai_contract",
+  "reviewer_id": "root",
+  "base_sha": "30e267f",
+  "head_sha": "3011b87",
+  "scope_check": "pass",
+  "review_status": "pass",
+  "id": "T003",
+  "status": "completed",
+  "scope_status": "pass",
+  "implementation_commit": "3011b87",
+  "scope": {
+    "allowed_paths_only": true,
+    "changed_paths": [
+      "src/lib/ai-consultation.ts",
+      "src/lib/ai-consultation-schema.ts",
+      "src/lib/ai-consultation-fallback.ts",
+      "tests/unit/ai-consultation.test.ts",
+      "tests/unit/ai-consultation-schema.test.ts"
+    ],
+    "out_of_scope_paths": [],
+    "excluded_untracked_paths": []
+  },
+  "verification_commands": [
+    {
+      "command": "npm run test -- --run tests/unit/ai-consultation.test.ts tests/unit/ai-consultation-schema.test.ts",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "2 test files passed; 10 tests passed."
+    },
+    {
+      "command": "npm run lint",
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build -- --webpack",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "Webpack production build completed successfully; equivalent fallback used because default Turbopack is blocked by sandbox port permissions."
+    }
+  ],
+  "verification": [
+    {
+      "command": "npm run test -- --run tests/unit/ai-consultation.test.ts tests/unit/ai-consultation-schema.test.ts",
+      "result": "passed",
+      "details": "2 test files passed; 10 tests passed."
+    },
+    {
+      "command": "npm run lint",
+      "result": "passed",
+      "details": "ESLint completed without findings."
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "passed",
+      "details": "TypeScript no-emit check completed without errors."
+    },
+    {
+      "command": "npm run build -- --webpack",
+      "result": "passed",
+      "details": "Production webpack build completed successfully."
+    }
+  ],
+  "review_findings": [],
+  "notes": [
+    "已按批准范围完成 AI 咨询契约、Schema、fallback 与单元测试。",
+    "已修正低置信度解释文案大小写，覆盖测试断言。",
+    "node_modules 使用协调器工作树的相对符号链接，仅用于本地验证，未纳入提交。"
+  ]
+}
