@@ -30,7 +30,7 @@ export interface ConsultationRunResult {
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_LOW_CONFIDENCE_THRESHOLD = 0.6;
 const LOW_CONFIDENCE_EXPLANATION =
-  "Confidence is low because the photo does not provide enough detail. Treat these as starting options and confirm them with a stylist.";
+  "confidence is low because the photo does not provide enough detail. Treat these as starting options and confirm them with a stylist.";
 
 class ConsultationTimeoutError extends Error {
   constructor() {
