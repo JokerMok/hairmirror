@@ -3,11 +3,11 @@ import { getRequestUser } from "@/lib/auth";
 import { db } from "@/lib/database";
 import {
   actorFromAuthUser,
+  deleteConsultation,
   deleteExpiredConsultations,
-  getConsultation,
   listConsultations,
 } from "@/lib/consultation-access";
-import { ConsultationDomainError, assertConsultationAccess } from "@/lib/consultation-domain";
+import { ConsultationDomainError } from "@/lib/consultation-domain";
 
 export const runtime = "nodejs";
 
@@ -37,10 +37,7 @@ export async function DELETE(request: NextRequest) {
     const id = typeof body.id === "string" ? body.id : request.nextUrl.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "INVALID_CONSULTATION_INPUT" }, { status: 400 });
     const database = db();
-    const consultation = getConsultation(database, id);
-    if (!consultation) throw new ConsultationDomainError("CONSULTATION_NOT_FOUND");
-    assertConsultationAccess(actorFromAuthUser(user), consultation);
-    database.prepare("DELETE FROM consultations WHERE id=?").run(id);
+    deleteConsultation(database, id, actorFromAuthUser(user));
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorResponse(error);

@@ -1,7 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { AuthUser } from "./database";
+import { removeSourceImage } from "./source-storage";
 import {
   assertConsultationAccess,
+  ConsultationDomainError,
   type ConsultationActor,
 } from "./consultation-domain";
 import type {
@@ -158,9 +160,10 @@ export function getPublicConsultation(
   const consultation = getConsultation(database, id);
   if (!consultation) return null;
   assertConsultationAccess(actor, consultation);
-  const { sourcePhotoPath: _sourcePhotoPath, ...publicConsultation } = consultation as Consultation & {
-    generatedImages: unknown[] | null;
+  const publicConsultation = { ...consultation } as PublicConsultation & {
+    sourcePhotoPath?: string | null;
   };
+  delete publicConsultation.sourcePhotoPath;
   return publicConsultation;
 }
 
@@ -187,15 +190,41 @@ export function listConsultations(
       : [];
   return (rows as unknown as ConsultationRow[]).map((row) => {
     const consultation = mapConsultation(row, getRecommendations(database, row.id));
-    const { sourcePhotoPath: _sourcePhotoPath, ...publicConsultation } = consultation;
+    const publicConsultation = { ...consultation } as PublicConsultation & {
+      sourcePhotoPath?: string | null;
+    };
+    delete publicConsultation.sourcePhotoPath;
     return publicConsultation;
   });
 }
 
 export function deleteExpiredConsultations(database: DatabaseSync, now = Date.now()): number {
-  const result = database
-    .prepare("DELETE FROM consultations WHERE created_at < ?")
-    .run(consultationRetentionCutoff(now));
+  const expired = database
+    .prepare("SELECT id,source_photo_path FROM consultations WHERE created_at < ?")
+    .all(consultationRetentionCutoff(now)) as unknown as Array<{ id: string; source_photo_path: string | null }>;
+  for (const row of expired) {
+    if (row.source_photo_path) {
+      try {
+        removeSourceImage(row.source_photo_path);
+      } catch {
+        // Retention must continue even if an already-missing asset cannot be removed.
+      }
+    }
+  }
+  const result = database.prepare("DELETE FROM consultations WHERE created_at < ?").run(consultationRetentionCutoff(now));
   return Number(result.changes ?? 0);
 }
 
+export function deleteConsultation(database: DatabaseSync, id: string, actor: ConsultationActor): void {
+  const consultation = getConsultation(database, id);
+  if (!consultation) throw new ConsultationDomainError("CONSULTATION_NOT_FOUND");
+  assertConsultationAccess(actor, consultation);
+  if (consultation.sourcePhotoPath) {
+    try {
+      removeSourceImage(consultation.sourcePhotoPath);
+    } catch {
+      // The database record remains authoritative; missing files are already deleted.
+    }
+  }
+  database.prepare("DELETE FROM consultations WHERE id=?").run(id);
+}

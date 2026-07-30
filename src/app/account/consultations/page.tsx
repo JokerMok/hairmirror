@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, CalendarDays, ClipboardList } from "lucide-react";
 import { AUTH_COOKIE, getUserByToken } from "@/lib/auth";
 import { db } from "@/lib/database";
+import ConsultationDeleteButton from "./ConsultationDeleteButton";
 import {
   actorFromAuthUser,
   deleteExpiredConsultations,
@@ -65,7 +66,10 @@ export default async function ConsultationHistoryPage() {
                       <p className="text-sm font-semibold">{consultation.recommendations.length} recommendations</p>
                       <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[#6f817c]"><CalendarDays size={13} /> {formatDate(consultation.createdAt)}</p>
                     </div>
-                    <span className="rounded-full bg-[#eaf4ef] px-3 py-1 text-xs font-semibold capitalize text-[#177761]">{consultation.status}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-[#eaf4ef] px-3 py-1 text-xs font-semibold capitalize text-[#177761]">{consultation.status}</span>
+                      <ConsultationDeleteButton id={consultation.id} />
+                    </div>
                   </div>
                   {consultation.analysisResult && (
                     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
