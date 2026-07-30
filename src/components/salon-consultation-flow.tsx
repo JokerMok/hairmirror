@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
+import CommunicationCard from "@/components/communication-card";
+import type { CommunicationCardResponse } from "@/lib/communication-card";
 import type { Consultation } from "@/lib/types";
 
 type Props = { initialConsultationId?: string };
@@ -18,6 +20,7 @@ export default function SalonConsultationFlow({ initialConsultationId }: Props) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [communicationCard, setCommunicationCard] = useState<CommunicationCardResponse | null>(null);
 
   useEffect(() => {
     if (!initialConsultationId) return;
@@ -34,6 +37,21 @@ export default function SalonConsultationFlow({ initialConsultationId }: Props) 
       .catch((reason: unknown) => !cancelled && setError(String(reason instanceof Error ? reason.message : reason)))
     return () => { cancelled = true; };
   }, [initialConsultationId]);
+
+  useEffect(() => {
+    if (!consultation?.selectedRecommendationId) return;
+    let cancelled = false;
+    fetch(`/api/consultations/${encodeURIComponent(consultation.id)}/communication-card`, { cache: "no-store" })
+      .then(readJson)
+      .then((payload) => { if (!cancelled) setCommunicationCard(payload as CommunicationCardResponse); })
+      .catch(() => { if (!cancelled) setCommunicationCard(null); });
+    return () => { cancelled = true; };
+  }, [consultation?.id, consultation?.selectedRecommendationId]);
+
+  const visibleCommunicationCard = consultation?.selectedRecommendationId &&
+    communicationCard?.card.recommendationId === consultation.selectedRecommendationId
+    ? communicationCard
+    : null;
 
   const statusLabel = useMemo(() => {
     if (!consultation) return "New consultation";
@@ -102,6 +120,7 @@ export default function SalonConsultationFlow({ initialConsultationId }: Props) 
           {!consultation?.analysisResult ? <p className="mt-8 rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">Upload a photo and run the analysis to see three directions.</p> : <>
             <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">{Object.entries(consultation.analysisResult).slice(0, 4).map(([key, value]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><dt className="text-slate-500">{key.replaceAll("_", " ")}</dt><dd className="mt-1 font-medium capitalize text-slate-900">{String(value)}</dd></div>)}</dl>
             <div className="mt-5 space-y-3">{consultation.recommendations.map((recommendation) => <article key={recommendation.id} className={`rounded-2xl border p-4 ${selected === recommendation.id ? "border-emerald-600 bg-emerald-50" : "border-slate-200"}`}><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-slate-900">{recommendation.styleName}</h3><p className="mt-1 text-sm text-slate-600">{recommendation.rationale}</p></div><span className="text-xs font-semibold text-slate-500">#{recommendation.rank}</span></div><p className="mt-3 text-sm text-slate-700"><strong>Execution:</strong> {Object.values(recommendation.execution).filter(Boolean).join(" · ")}</p><button type="button" onClick={() => chooseRecommendation(recommendation.id)} disabled={busy || consultation.status === "completed"} className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">{selected === recommendation.id ? "Selected" : "Save this direction"}</button></article>)}</div>
+            {visibleCommunicationCard && <div className="mt-6"><CommunicationCard card={visibleCommunicationCard.card} markdown={visibleCommunicationCard.markdown} /></div>}
           </>}
         </div>
       </div>
