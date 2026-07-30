@@ -1,0 +1,65 @@
+{
+  "task_id": "T007",
+  "implementer_id": "/root/t007_generation_queue",
+  "reviewer_id": "/root",
+  "base_sha": "2222c1a7be8b1a057d53523c54c03f2fdacc9a99",
+  "head_sha": "d08208c48129809d4eb971b1a3cd5f5f5d75dffa",
+  "id": "T007",
+  "status": "completed",
+  "scope_status": "pass",
+  "review_status": "pass",
+  "implementation_commit": "d08208c48129809d4eb971b1a3cd5f5f5d75dffa",
+  "scope": {
+    "allowed_paths_only": true,
+    "changed_paths": [
+      "src/lib/generation-provider.ts",
+      "src/lib/generation-queue.ts",
+      "tests/e2e/generation-fallback.spec.ts",
+      "tests/unit/generation-consultation.test.ts"
+    ],
+    "out_of_scope_paths": [],
+    "excluded_untracked_paths": [
+      "src/app/api/consultations/",
+      "src/app/salon/consultations/",
+      "src/components/salon-consultation-flow.tsx",
+      "src/lib/consultation-access.ts"
+    ]
+  },
+  "verification_commands": [
+    {
+      "command": "npx vitest run src/lib/generation-queue.test.ts tests/unit/generation-consultation.test.ts tests/e2e/generation-fallback.spec.ts",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "3 test files passed; 8 tests passed."
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run lint",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "Only two existing warnings in unrelated src/lib/consultation-access.ts."
+    },
+    {
+      "command": "npm run build -- --webpack",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "Webpack production build completed successfully."
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0
+    }
+  ],
+  "review_findings": [],
+  "notes": [
+    "Generation queue payloads now persist consultationId/recommendationId metadata for durable linkage.",
+    "Added consultation-level recommendation state lookup plus cancellation and failed-job retry linkage.",
+    "Worker provider context now receives consultation and recommendation identifiers.",
+    "Default Turbopack build was blocked by the restricted sandbox's port binding; the Webpack production build passed."
+  ]
+}
