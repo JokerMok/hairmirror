@@ -492,6 +492,21 @@ export default async function AccountPage({
                 {t("Usage history", "使用记录")}
               </h2>
             </div>
+            <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-[var(--line)] bg-[#f8faf8] p-4">
+              <div>
+                <b className="block">{t("Consultation history", "咨询历史")}</b>
+                <span className="mt-1 block text-sm text-[#6f7773]">
+                  {t("Saved AI analysis and recommendations", "查看已保存的 AI 分析与推荐")}
+                </span>
+              </div>
+              <Link
+                href="/account/consultations"
+                className="group inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#1f6b5c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f6b5c]"
+              >
+                {t("View", "查看")}
+                <ChevronRight size={16} className="transition group-hover:translate-x-0.5" />
+              </Link>
+            </div>
             {usage.length === 0 ? (
               <p className="mt-8 text-sm text-[#6f7773]">
                 {t("No hairstyle generations yet.", "还没有发型设计记录。")}
