@@ -1,0 +1,8 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getRequestUser } from "@/lib/auth";
+import { ConsultationDomainError } from "@/lib/consultation-domain";
+import { actorForUser, analyze, archive, requireConsultation, selectRecommendation } from "../_repository";
+export const runtime="nodejs";
+const fail=(e:unknown)=>{ const code=e instanceof ConsultationDomainError?e.code:"INVALID_CONSULTATION_INPUT"; const status=code==="CONSULTATION_NOT_FOUND"?404:code==="CONSULTATION_FORBIDDEN"?403:400; return NextResponse.json({error:code},{status,headers:{"Cache-Control":"no-store"}}); };
+export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}){ const u=getRequestUser(req); if(!u)return NextResponse.json({error:"UNAUTHENTICATED"},{status:401}); try{return NextResponse.json({consultation:requireConsultation((await params).id,actorForUser(u))},{headers:{"Cache-Control":"no-store"}});}catch(e){return fail(e);} }
+export async function PATCH(req:NextRequest,{params}:{params:Promise<{id:string}>}){ const u=getRequestUser(req); if(!u)return NextResponse.json({error:"UNAUTHENTICATED"},{status:401}); try{const id=(await params).id;const actor=actorForUser(u);const item=requireConsultation(id,actor);const body=await req.json() as Record<string,unknown>;const action=body.action;const result=action==="analyze"?analyze(item):action==="archive"?archive(item):action==="select"?selectRecommendation(item,String(body.selectedRecommendationId??"")):null;if(!result)throw new ConsultationDomainError("INVALID_CONSULTATION_INPUT");return NextResponse.json({consultation:result},{headers:{"Cache-Control":"no-store"}});}catch(e){return fail(e);} }
