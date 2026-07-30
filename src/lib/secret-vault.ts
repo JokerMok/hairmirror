@@ -36,6 +36,13 @@ export function decryptSecret(payload: string) {
   const [version, iv, tag, encrypted] = payload.split(".");
   if (version !== "v1" || !iv || !tag || !encrypted)
     throw new Error("INVALID_ENCRYPTED_SECRET");
+  // Reject non-canonical base64url input before decrypting. Without this
+  // check, changing a trailing base64 character that only affects padding
+  // bits can decode to the same bytes and bypass the tamper test.
+  const canonical = (value: string) =>
+    Buffer.from(value, "base64url").toString("base64url") === value;
+  if (![iv, tag, encrypted].every(canonical))
+    throw new Error("INVALID_ENCRYPTED_SECRET");
   const decipher = createDecipheriv(
     "aes-256-gcm",
     secretKey(),
