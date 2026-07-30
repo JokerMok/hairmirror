@@ -1,0 +1,68 @@
+{
+  "task_id": "T005",
+  "implementer_id": "/root/t005_consultation_history",
+  "reviewer_id": "/root",
+  "base_sha": "eda8d089897002e399841380e2e27b0a40e2430a",
+  "head_sha": "7b2b7c3fa2d7232e2bfdf03cfd791dcef3d2d3db",
+  "id": "T005",
+  "status": "completed",
+  "scope_status": "pass",
+  "review_status": "pass",
+  "implementation_commit": "7b2b7c3fa2d7232e2bfdf03cfd791dcef3d2d3db",
+  "scope": {
+    "allowed_paths_only": true,
+    "changed_paths": [
+      "src/app/account/page.tsx",
+      "src/app/account/consultations/page.tsx",
+      "src/app/api/consultations/history/route.ts",
+      "src/lib/consultation-access.ts",
+      "tests/api/consultation-history.test.ts",
+      "tests/unit/consultation-access.test.ts"
+    ],
+    "out_of_scope_paths": [],
+    "excluded_untracked_paths": []
+  },
+  "verification_commands": [
+    {
+      "command": "npx vitest run tests/unit/consultation-access.test.ts tests/api/consultation-history.test.ts",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "2 test files passed; 4 tests passed."
+    },
+    {
+      "command": "npm test",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "32 test files passed; 94 tests passed."
+    },
+    {
+      "command": "npm run lint",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "No errors; three non-blocking img/unused-variable warnings."
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build -- --webpack",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "Webpack production build completed successfully."
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0
+    }
+  ],
+  "review_findings": [],
+  "notes": [
+    "Added tenant-scoped /account/consultations history UI and /api/consultations/history GET/DELETE endpoints with lazy cleanup of records older than 30 days.",
+    "Responses from the new history access layer strip sourcePhotoPath; the page never renders it. The access layer scopes consumer records to customer_user_id and salon roles to their salon tenant.",
+    "The existing T004 /api/consultations endpoint was intentionally not modified; audit it before wiring clients to ensure its internal DTO does not expose sourcePhotoPath.",
+    "Retention cleanup runs on history page/API reads; explicit DELETE supports a request body id or query-string id."
+  ]
+}
