@@ -7,7 +7,11 @@ import {
   type ConsultationActor,
   ConsultationDomainError,
 } from "@/lib/consultation-domain";
-import { createFallbackConsultation } from "@/lib/ai-consultation-fallback";
+import { runConsultation, type ConsultationInput } from "@/lib/ai-consultation";
+import {
+  configuredConsultationTimeoutMs,
+  createConfiguredConsultationProvider,
+} from "@/lib/consultation-provider";
 import type { AuthUser } from "@/lib/database";
 import type { Consultation, ConsultationStatus, Recommendation } from "@/lib/types";
 
@@ -44,14 +48,32 @@ export function listForActor(actor: ConsultationActor) {
   const rows = actor.role === "consumer" ? db().prepare("SELECT * FROM consultations WHERE customer_user_id=? ORDER BY created_at DESC").all(actor.userId) : db().prepare("SELECT * FROM consultations WHERE salon_id=? ORDER BY created_at DESC").all(actor.tenantId);
   return (rows as Row[]).map(mapConsultation).map((x) => { x.recommendations=(db().prepare("SELECT * FROM recommendations WHERE consultation_id=? ORDER BY rank").all(x.id) as Row[]).map(mapRecommendation); return x; });
 }
-export function analyze(item: Consultation) {
+export async function analyze(item: Consultation, input: ConsultationInput = {}) {
   assertStatusTransition(item.status, "analyzing");
   db().prepare("UPDATE consultations SET status='analyzing',updated_at=? WHERE id=?").run(new Date().toISOString(), item.id);
   try {
-    const report = createFallbackConsultation("low_confidence"); const now = new Date().toISOString(); const d = db();
+    let provider = null;
+    try {
+      provider = createConfiguredConsultationProvider();
+    } catch {
+      // Invalid optional configuration must never block consultation recovery.
+    }
+    const fallbackProvider = { analyze: async () => { throw new Error("CONSULTATION_PROVIDER_NOT_CONFIGURED"); } };
+    const result = await runConsultation(provider ?? fallbackProvider, input, {
+      timeoutMs: configuredConsultationTimeoutMs(),
+    });
+    const report = result.report;
+    const analysis = {
+      ...report.analysis,
+      status: report.status,
+      source: result.source,
+      explanation: report.explanation ?? null,
+      reason: result.reason ?? null,
+    };
+    const now = new Date().toISOString(); const d = db();
     d.prepare("DELETE FROM recommendations WHERE consultation_id=?").run(item.id);
     report.recommendations.forEach((r, i) => d.prepare("INSERT INTO recommendations(id,consultation_id,style_name,rationale,execution_json,rank,created_at) VALUES(?,?,?,?,?,?,?)").run(randomUUID(), item.id, r.styleName, r.fitReason, JSON.stringify({ suitableFor:r.suitableFor, maintenanceMinutes:String(r.maintenanceMinutes), maintenanceLevel:r.maintenanceLevel, advice:r.executionAdvice.join(" ") }), i+1, now));
-    d.prepare("UPDATE consultations SET status='ready',analysis_json=?,generated_images_json=?,updated_at=? WHERE id=?").run(JSON.stringify(report.analysis), JSON.stringify([]), now, item.id);
+    d.prepare("UPDATE consultations SET status='ready',analysis_json=?,generated_images_json=?,updated_at=? WHERE id=?").run(JSON.stringify(analysis), JSON.stringify([]), now, item.id);
   } catch (error) { db().prepare("UPDATE consultations SET status='draft',updated_at=? WHERE id=?").run(new Date().toISOString(), item.id); throw error; }
   return findConsultation(item.id)!;
 }
