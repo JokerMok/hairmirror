@@ -1,0 +1,63 @@
+{
+  "task_id": "T008",
+  "implementer_id": "/root/t008_billing_off",
+  "reviewer_id": "/root",
+  "base_sha": "ac0fa1cbe47f629612c404cc5ff073b34e6b9140",
+  "head_sha": "50c8ae08617ca9c0a833690a7a53a8eabd05bf81",
+  "id": "T008",
+  "status": "completed",
+  "scope_status": "blocked",
+  "review_status": "pass",
+  "implementation_commit": "50c8ae08617ca9c0a833690a7a53a8eabd05bf81",
+  "scope": {
+    "allowed_paths_only": true,
+    "changed_paths": [
+      "src/app/pricing/page.tsx",
+      "src/lib/billing-feature-flags.ts",
+      "tests/unit/billing-feature-flags.test.ts"
+    ],
+    "out_of_scope_paths": [],
+    "excluded_untracked_paths": [
+      "documentation/03-quality/v03-metrics.md",
+      "src/app/api/analytics/",
+      "src/lib/analytics-events.ts",
+      "tests/unit/analytics-events.test.ts"
+    ]
+  },
+  "verification_commands": [
+    {
+      "command": "npm run test -- --run tests/unit/billing-feature-flags.test.ts",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "1 test file passed; 3 tests passed."
+    },
+    {
+      "command": "npm run lint",
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build -- --webpack",
+      "status": "passed",
+      "exit_code": 0,
+      "note": "Webpack production build completed successfully."
+    },
+    {
+      "command": "python3 /Users/jokermok/.codex/skills/orchestrate-hybrid-development/scripts/scope_guard.py check --project-root . --task-id T008 --attempt 1",
+      "status": "blocked",
+      "exit_code": 1,
+      "note": "Coordinator scope baseline is missing; guard reported SCOPE FAIL rather than a path violation."
+    }
+  ],
+  "review_findings": [],
+  "notes": [
+    "BILLING_PAUSED defaults to true; set BILLING_PAUSED=false to restore paid pricing entry points.",
+    "Pricing UI hides paid plans and the Gumroad activation link while paused; billing APIs, catalog reads, and backend data paths were not modified.",
+    "The scope guard could not complete because the main coordinator has not created the required baseline snapshot; unrelated untracked work from other tasks was left untouched."
+  ]
+}
