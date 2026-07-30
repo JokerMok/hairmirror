@@ -15,6 +15,7 @@ import {
   personalPackSetCount,
 } from "@/lib/gumroad-billing";
 import { paddlePriceDetails } from "@/lib/paddle-billing";
+import { getBillingFeatureState } from "@/lib/billing-feature-flags";
 
 export const metadata: Metadata = {
   title: "Pricing – Personal Preview Packs and Salon Plans",
@@ -32,6 +33,7 @@ export default async function PricingPage({
   const locale = normalizeLocale(jar.get(LOCALE_COOKIE)?.value);
   const zh = locale === "zh-CN";
   const user = getUserByToken(jar.get(AUTH_COOKIE)?.value);
+  const billingFeatures = getBillingFeatureState();
   const provider = billingProvider();
   let plans: Awaited<ReturnType<typeof billingCatalog>> = [];
   let hasConfiguredPlans = false;
@@ -82,7 +84,11 @@ export default async function PricingPage({
             {zh ? "个人按次，门店按月" : "Pay per pack or run a salon plan"}
           </h1>
           <p className="mx-auto mt-6 max-w-xl leading-7 text-[var(--text-muted)]">
-            {provider === "paddle"
+            {billingFeatures.billingPaused
+              ? zh
+                ? "当前处于产品验证阶段，暂不开放付费入口。登录后可完成一次完整体验。"
+                : "Paid plans are paused while we validate the consultation workflow. Sign in to get one complete preview free."
+              : provider === "paddle"
               ? zh
                 ? "Paddle 负责安全结账、税费、账单和订阅管理；付款确认后权益会自动到账。"
                 : "Paddle handles secure checkout, taxes, invoices, and subscriptions. Access is added automatically after payment."
@@ -112,7 +118,7 @@ export default async function PricingPage({
             </p>
           )}
         </section>
-        {showPersonalPack || plans.length ? (
+        {billingFeatures.showPaidPlans && billingFeatures.showCheckoutCta && (showPersonalPack || plans.length) ? (
           <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-2">
             {showPersonalPack && (
               <article className="relative flex min-h-[460px] flex-col rounded-[1.75rem] border border-[var(--line)] bg-white p-7 shadow-[var(--shadow-sm)] md:p-9">
@@ -258,7 +264,11 @@ export default async function PricingPage({
         ) : (
           <section className="rounded-3xl bg-white p-8 text-center text-[#6f7773]">
             <h2 className="text-xl font-semibold text-[#20312c]">
-              {user?.role === "staff" && hasConfiguredPlans
+              {billingFeatures.billingPaused
+                ? zh
+                  ? "收费入口暂未开放"
+                  : "Paid plans are paused"
+                : user?.role === "staff" && hasConfiguredPlans
                 ? zh
                   ? "订阅由门店管理员管理"
                   : "Billing is managed by your salon owner"
@@ -267,7 +277,11 @@ export default async function PricingPage({
                   : "Billing setup in progress"}
             </h2>
             <p className="mt-3">
-              {user?.role === "staff" && hasConfiguredPlans
+              {billingFeatures.billingPaused
+                ? zh
+                  ? "我们正在验证 AI 发型咨询流程。你仍可登录并完成一次完整体验。"
+                  : "We are validating the AI consultation workflow. You can still sign in and complete one full preview."
+                : user?.role === "staff" && hasConfiguredPlans
                 ? zh
                   ? "如需调整套餐或额度，请联系门店管理员。"
                   : "Contact your salon owner to change the plan or allowance."
@@ -285,7 +299,7 @@ export default async function PricingPage({
             </p>
           </section>
         )}
-        {provider === "gumroad" && user?.role !== "staff" && (
+        {!billingFeatures.billingPaused && provider === "gumroad" && user?.role !== "staff" && (
           <p className="mt-8 text-center text-sm text-[#6f7773]">
             {zh ? "已经购买？" : "Already purchased?"}{" "}
             <Link href="/account?activate=1" className="font-medium underline">
