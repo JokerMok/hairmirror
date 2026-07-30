@@ -16,6 +16,11 @@ import { readSourceImage, removeSourceImage } from "./source-storage";
 import type { StoredDesignTask } from "./types";
 
 type Row = Record<string, unknown>;
+export type QueueMetadata = {
+  consultationId?: string;
+  recommendationId?: string;
+};
+type QueuePayload = StoredDesignTask & { queueMetadata?: QueueMetadata };
 type ClaimedJob = {
   id: string;
   taskId: string;
@@ -24,7 +29,7 @@ type ClaimedJob = {
   attempts: number;
   maxAttempts: number;
   ownerSessionId: string;
-  payload: StoredDesignTask;
+  payload: QueuePayload;
   sourceImagePath: string | null;
   lockToken: string;
 };
@@ -75,6 +80,7 @@ export function enqueuePersistentGeneration(input: {
   idempotencyKey: string;
   sourceImagePath: string | null;
   sourceExpiresAt: number | null;
+  metadata?: QueueMetadata;
 }) {
   const existing = findIdempotentTask(input.ownerKey, input.idempotencyKey);
   if (existing) {
@@ -95,6 +101,9 @@ export function enqueuePersistentGeneration(input: {
     model.costPerImageMicros,
     input.task.variants.length,
   );
+  const payload: QueuePayload = input.metadata
+    ? { ...input.task, queueMetadata: input.metadata }
+    : input.task;
   database.exec("BEGIN IMMEDIATE");
   try {
     assertGlobalCostFuse(estimatedCost, nowMs);
@@ -141,7 +150,7 @@ export function enqueuePersistentGeneration(input: {
         input.task.ownerSessionId,
         input.ownerKey,
         input.idempotencyKey,
-        JSON.stringify(input.task),
+        JSON.stringify(payload),
         input.sourceImagePath,
         input.sourceExpiresAt,
         nowMs,
@@ -162,6 +171,117 @@ export function enqueuePersistentGeneration(input: {
     taskId: input.task.id,
   });
   return { taskId: input.task.id, jobId, duplicate: false };
+}
+
+/** Enqueue one generation job per AI recommendation while preserving consultation linkage. */
+export function enqueueConsultationRecommendations(input: {
+  consultationId: string;
+  user: AuthUser | null;
+  ownerKey: string;
+  recommendations: Array<{
+    recommendationId: string;
+    task: StoredDesignTask;
+    sourceImagePath: string | null;
+    sourceExpiresAt: number | null;
+    idempotencyKey?: string;
+  }>;
+}) {
+  return input.recommendations.map((recommendation) =>
+    enqueuePersistentGeneration({
+      task: recommendation.task,
+      user: input.user,
+      ownerKey: input.ownerKey,
+      idempotencyKey:
+        recommendation.idempotencyKey ??
+        `${input.consultationId}:${recommendation.recommendationId}`,
+      sourceImagePath: recommendation.sourceImagePath,
+      sourceExpiresAt: recommendation.sourceExpiresAt,
+      metadata: {
+        consultationId: input.consultationId,
+        recommendationId: recommendation.recommendationId,
+      },
+    }),
+  );
+}
+
+export type ConsultationRecommendationJobState = {
+  consultationId: string;
+  recommendationId: string;
+  taskId: string;
+  jobId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  attempts: number;
+  maxAttempts: number;
+  errorCode: string | null;
+};
+
+/** Read durable queue state for a consultation's recommendations. */
+export function listConsultationRecommendationJobs(
+  consultationId: string,
+): ConsultationRecommendationJobState[] {
+  const rows = db()
+    .prepare(
+      "SELECT j.id,j.task_id,j.status,j.attempts,j.error_code,p.max_attempts,p.payload_json FROM generation_jobs j JOIN generation_job_payloads p ON p.job_id=j.id WHERE j.status IN ('queued','processing','completed','failed','cancelled') ORDER BY j.queued_at ASC",
+    )
+    .all() as Row[];
+  const states: ConsultationRecommendationJobState[] = [];
+  for (const row of rows) {
+    let metadata: QueueMetadata | undefined;
+    try {
+      metadata = (JSON.parse(String(row.payload_json)) as QueuePayload)
+        .queueMetadata;
+    } catch {
+      metadata = undefined;
+    }
+    if (metadata?.consultationId !== consultationId || !metadata.recommendationId)
+      continue;
+    states.push({
+      consultationId,
+      recommendationId: metadata.recommendationId,
+      taskId: String(row.task_id),
+      jobId: String(row.id),
+      status: String(row.status) as ConsultationRecommendationJobState["status"],
+      attempts: Number(row.attempts),
+      maxAttempts: Number(row.max_attempts),
+      errorCode: row.error_code ? String(row.error_code) : null,
+    });
+  }
+  return states;
+}
+
+export function requestConsultationRecommendationCancellation(
+  consultationId: string,
+  recommendationId: string,
+) {
+  const state = listConsultationRecommendationJobs(consultationId).find(
+    (item) => item.recommendationId === recommendationId,
+  );
+  if (!state)
+    return { ok: false as const, reason: "NOT_FOUND" as const };
+  return {
+    ...requestGenerationCancellation(state.taskId),
+    consultationId,
+    recommendationId,
+    taskId: state.taskId,
+  };
+}
+
+export function retryConsultationRecommendation(
+  consultationId: string,
+  recommendationId: string,
+  user: AuthUser | null,
+) {
+  const state = listConsultationRecommendationJobs(consultationId).find(
+    (item) => item.recommendationId === recommendationId,
+  );
+  if (!state)
+    return { ok: false as const, reason: "NOT_FOUND" as const };
+  return {
+    ...retryFailedGeneration(state.taskId, user),
+    consultationId,
+    recommendationId,
+    taskId: state.taskId,
+  };
 }
 
 export function claimNextGenerationJob(now = Date.now()): ClaimedJob | null {
@@ -199,7 +319,7 @@ export function claimNextGenerationJob(now = Date.now()): ClaimedJob | null {
       attempts: Number(row.attempts) + 1,
       maxAttempts: Number(row.max_attempts),
       ownerSessionId: String(row.owner_session_id),
-      payload: JSON.parse(String(row.payload_json)) as StoredDesignTask,
+      payload: JSON.parse(String(row.payload_json)) as QueuePayload,
       sourceImagePath: row.source_image_path
         ? String(row.source_image_path)
         : null,
@@ -446,6 +566,8 @@ export async function processNextGenerationJob(now = Date.now()) {
         userId: job.userId,
         preferences: job.payload.preferences,
         imageDataUrl,
+        consultationId: job.payload.queueMetadata?.consultationId,
+        recommendationId: job.payload.queueMetadata?.recommendationId,
       },
       runtime,
     );

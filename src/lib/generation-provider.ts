@@ -8,12 +8,14 @@ export type GenerationResult = {
   actualCostMicros: number;
 };
 
-type GenerationContext = {
+export type GenerationContext = {
   taskId: string;
   ownerSessionId: string;
   userId: string | null;
   preferences: DesignPreferences;
   imageDataUrl?: string;
+  consultationId?: string;
+  recommendationId?: string;
 };
 
 const DEMO_IMAGES: Record<string, string> = {
