@@ -55,7 +55,7 @@ export default async function ConsultationHistoryPage() {
             <div className="mt-8 rounded-2xl border border-dashed border-[#cbd9d4] px-6 py-12 text-center">
               <p className="font-medium">No consultations yet</p>
               <p className="mt-2 text-sm text-[#6f817c]">Start a consultation to save analysis, recommendations, and execution notes here.</p>
-              <Link href="/#studio" className="mt-5 inline-flex rounded-full bg-[#177761] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#105e4d]">Start a consultation</Link>
+              <Link href={user.role === "personal" ? "/consumer/consultations/new" : "/salon/consultations/new"} className="mt-5 inline-flex rounded-full bg-[#177761] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#105e4d]">Start a consultation</Link>
             </div>
           ) : (
             <div className="mt-6 space-y-4">
@@ -84,6 +84,12 @@ export default async function ConsultationHistoryPage() {
                   {consultation.recommendations.length > 0 && (
                     <p className="mt-4 text-sm text-[#4b665e]">{consultation.recommendations.map((item) => item.styleName).join(" · ")}</p>
                   )}
+                  <Link
+                    href={`/account/consultations/${encodeURIComponent(consultation.id)}`}
+                    className="mt-5 inline-flex min-h-10 items-center rounded-full border border-[#b8cec5] px-4 py-2 text-sm font-semibold text-[#177761] hover:border-[#177761]"
+                  >
+                    Open consultation details
+                  </Link>
                 </article>
               ))}
             </div>

@@ -117,7 +117,10 @@ export type ConsultationErrorCode =
   | "INVALID_STATUS_TRANSITION"
   | "INVALID_CONSULTATION_INPUT"
   | "RECOMMENDATION_NOT_FOUND"
-  | "TENANT_REQUIRED";
+  | "TENANT_REQUIRED"
+  | "CONSENT_REQUIRED"
+  | "SOURCE_IMAGE_QUALITY_INVALID"
+  | "CUSTOMER_NOT_FOUND";
 
 export interface Salon {
   id: string;
@@ -148,6 +151,42 @@ export interface Recommendation {
   createdAt: string;
 }
 
+export type ConsultationGenerationJobStatus =
+  | "queued"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type ConsultationGenerationStatus =
+  | "idle"
+  | "queued"
+  | "processing"
+  | "partial"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface SourceImageQuality {
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  bytes: number;
+  width: number;
+  height: number;
+  passed: boolean;
+  reasons: string[];
+}
+
+export interface ConsultationGenerationJob {
+  consultationId: string;
+  recommendationId: string;
+  taskId: string;
+  jobId: string;
+  status: ConsultationGenerationJobStatus;
+  attempts: number;
+  maxAttempts: number;
+  errorCode: string | null;
+}
+
 export interface Consultation {
   id: string;
   salonId: string | null;
@@ -158,6 +197,11 @@ export interface Consultation {
   analysisResult: Record<string, unknown> | null;
   recommendations: Recommendation[];
   selectedRecommendationId: string | null;
+  generationStatus: ConsultationGenerationStatus;
+  sourceConsentAt: string | null;
+  sourceConsentVersion: string | null;
+  sourceQuality: SourceImageQuality | null;
+  generationJobs?: ConsultationGenerationJob[];
   createdAt: string;
   updatedAt: string;
 }

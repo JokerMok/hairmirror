@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Scissors } from "lucide-react";
 import { cookies } from "next/headers";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { AUTH_COOKIE, getUserByToken } from "@/lib/auth";
+import { salonStartPath } from "@/lib/entry-routes";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 
 export default async function SalonPage() {
@@ -11,7 +12,10 @@ export default async function SalonPage() {
   const user = getUserByToken(jar.get(AUTH_COOKIE)?.value);
   const zh = locale === "zh-CN";
   const t = (en: string, cn: string) => (zh ? cn : en);
-  const startHref = user ? "/#studio" : "/login?next=%2F%23studio";
+  const startHref = salonStartPath(user?.role ?? null);
+  const startLabel = user?.role === "personal"
+    ? t("Continue as customer", "以客户身份继续")
+    : t("Create a consultation", "创建客户咨询");
 
   return (
     <main className="min-h-screen overflow-x-clip">
@@ -38,7 +42,7 @@ export default async function SalonPage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href={startHref} className="button-primary min-h-11 bg-[#e9b663] !text-[#15342d] hover:bg-[#f2c77e]">
-              {t("Create a consultation", "创建客户咨询")} <ArrowRight size={16} />
+              {startLabel} <ArrowRight size={16} />
             </Link>
             <Link href="/#examples" className="button-secondary min-h-11 border-white/20 bg-white/10 !text-white hover:bg-white/15">
               {t("View examples", "查看案例")}

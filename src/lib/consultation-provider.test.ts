@@ -26,7 +26,7 @@ describe("consultation provider adapter", () => {
     }) as Response);
 
     const provider = createConfiguredConsultationProvider({ fetchImpl });
-    const result = await provider?.analyze({ imageId: "image-1", role: "stylist" });
+    const result = await provider?.analyze({ imageId: "image-1", imageDataUrl: "data:image/png;base64,photo", role: "stylist" });
 
     expect(result).toEqual({ status: "ready" });
     expect(fetchImpl).toHaveBeenCalledWith(
@@ -34,7 +34,7 @@ describe("consultation provider adapter", () => {
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({ authorization: "Bearer secret" }),
-        body: JSON.stringify({ imageId: "image-1", role: "stylist" }),
+        body: JSON.stringify({ imageId: "image-1", imageDataUrl: "data:image/png;base64,photo", role: "stylist" }),
       }),
     );
   });

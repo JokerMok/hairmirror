@@ -6,6 +6,7 @@ import type { Consultation } from "@/lib/types";
 const consultation = (selectedRecommendationId: string | null = "rec-1"): Consultation => ({
   id: "consultation-1", salonId: "salon-1", customerUserId: null, stylistUserId: "stylist-1", status: "completed",
   sourcePhotoPath: "/private/source.jpg", analysisResult: { face_shape: "oval" }, selectedRecommendationId,
+  generationStatus: "idle", sourceConsentAt: null, sourceConsentVersion: null, sourceQuality: null,
   createdAt: "2026-07-30T00:00:00.000Z", updatedAt: "2026-07-30T00:00:00.000Z",
   recommendations: [{ id: "rec-1", consultationId: "consultation-1", styleName: "Textured Crop", rationale: "Balances facial length.", execution: { suitableFor: "Daily wear", maintenanceMinutes: "1", maintenanceLevel: "Low", advice: "Use a small amount of matte paste." }, imageUrl: null, rank: 1, createdAt: "2026-07-30T00:00:00.000Z" }],
 });

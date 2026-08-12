@@ -9,6 +9,7 @@ import {
 
 export interface ConsultationInput {
   imageId?: string;
+  imageDataUrl?: string;
   role?: "consumer" | "stylist";
 }
 

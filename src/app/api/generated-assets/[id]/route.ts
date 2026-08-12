@@ -18,9 +18,37 @@ export async function GET(
   if (!asset) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   const user = getUserByToken(request.cookies.get(AUTH_COOKIE)?.value);
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  let consultationAccess = false;
+  if (user) {
+    const links = db()
+      .prepare(
+        "SELECT p.payload_json FROM generation_job_payloads p JOIN generation_jobs j ON j.id=p.job_id WHERE j.task_id=?",
+      )
+      .all(String(asset.task_id)) as Array<{ payload_json: string }>;
+    for (const link of links) {
+      try {
+        const metadata = (JSON.parse(link.payload_json) as { queueMetadata?: { consultationId?: string } }).queueMetadata;
+        if (!metadata?.consultationId) continue;
+        const consultation = db()
+          .prepare("SELECT salon_id,customer_user_id FROM consultations WHERE id=?")
+          .get(metadata.consultationId) as
+          | { salon_id?: string | null; customer_user_id?: string | null }
+          | undefined;
+        if (
+          consultation?.customer_user_id === user.id ||
+          (user.storeId && consultation?.salon_id === user.storeId)
+        ) {
+          consultationAccess = true;
+          break;
+        }
+      } catch {
+        // Ignore malformed metadata; direct ownership checks still apply.
+      }
+    }
+  }
   if (
-    (asset.user_id && user?.id !== asset.user_id) ||
-    (!asset.user_id && sessionId !== asset.owner_session_id)
+    (asset.user_id && user?.id !== asset.user_id && !consultationAccess) ||
+    (!asset.user_id && sessionId !== asset.owner_session_id && !consultationAccess)
   )
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   try {

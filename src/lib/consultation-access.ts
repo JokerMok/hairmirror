@@ -1,6 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { AuthUser } from "./database";
-import { removeSourceImage } from "./source-storage";
+import { removeSourceImageIfUnreferenced } from "./source-storage";
+import { removeAssetsForTask } from "./asset-retention";
+import { requestGenerationCancellation } from "./generation-queue";
 import {
   assertConsultationAccess,
   ConsultationDomainError,
@@ -9,9 +11,11 @@ import {
 import type {
   Consultation,
   ConsultationActorRole,
+  ConsultationGenerationStatus,
   ConsultationStatus,
   Recommendation,
   RecommendationExecution,
+  SourceImageQuality,
 } from "./types";
 
 export const CONSULTATION_RETENTION_DAYS = 30;
@@ -60,6 +64,13 @@ function parseGeneratedImages(value: unknown): unknown[] | null {
   return Array.isArray(parsed) ? parsed : null;
 }
 
+function parseSourceQuality(value: unknown): SourceImageQuality | null {
+  const parsed = parseJson(value);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? (parsed as SourceImageQuality)
+    : null;
+}
+
 function parseExecution(value: unknown): RecommendationExecution {
   const parsed = parseJson(value);
   return parsed && typeof parsed === "object" && !Array.isArray(parsed)
@@ -77,6 +88,10 @@ type ConsultationRow = {
   analysis_json: string | null;
   generated_images_json: string | null;
   selected_recommendation_id: string | null;
+  generation_status: string;
+  source_consent_at: string | null;
+  source_consent_version: string | null;
+  source_quality_json: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -120,6 +135,10 @@ function mapConsultation(
     analysisResult: parseAnalysis(row.analysis_json),
     recommendations,
     selectedRecommendationId: row.selected_recommendation_id,
+    generationStatus: row.generation_status as ConsultationGenerationStatus,
+    sourceConsentAt: row.source_consent_at,
+    sourceConsentVersion: row.source_consent_version,
+    sourceQuality: parseSourceQuality(row.source_quality_json),
     generatedImages: parseGeneratedImages(row.generated_images_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -140,11 +159,44 @@ function getRow(database: DatabaseSync, id: string): ConsultationRow | null {
   const row = database
     .prepare(
       `SELECT id,salon_id,customer_user_id,stylist_user_id,status,source_photo_path,
-              analysis_json,generated_images_json,selected_recommendation_id,created_at,updated_at
+              source_consent_at,source_consent_version,source_quality_json,
+              analysis_json,generated_images_json,selected_recommendation_id,generation_status,created_at,updated_at
        FROM consultations WHERE id=?`,
     )
     .get(id) as unknown as ConsultationRow | undefined;
   return row ?? null;
+}
+
+function cleanupConsultationGeneration(database: DatabaseSync, consultationId: string) {
+  const rows = database
+    .prepare(
+      "SELECT j.task_id,j.status,p.payload_json FROM generation_jobs j JOIN generation_job_payloads p ON p.job_id=j.id",
+    )
+    .all() as Array<{ task_id: string; status: string; payload_json: string }>;
+  for (const row of rows) {
+    let linked = false;
+    try {
+      linked = (JSON.parse(row.payload_json) as { queueMetadata?: { consultationId?: string } })
+        .queueMetadata?.consultationId === consultationId;
+    } catch {
+      linked = false;
+    }
+    if (!linked) continue;
+    if (row.status === "queued" || row.status === "processing") {
+      try {
+        requestGenerationCancellation(row.task_id);
+      } catch {
+        // Keep deletion moving; the worker recovery path can finish cancellation.
+      }
+    } else {
+      removeAssetsForTask(row.task_id);
+      database
+        .prepare(
+          "UPDATE generation_job_payloads SET source_image_path=NULL,source_expires_at=NULL WHERE job_id=(SELECT id FROM generation_jobs WHERE task_id=?)",
+        )
+        .run(row.task_id);
+    }
+  }
 }
 
 export function getConsultation(database: DatabaseSync, id: string): Consultation | null {
@@ -175,7 +227,8 @@ export function listConsultations(
     ? database
         .prepare(
           `SELECT id,salon_id,customer_user_id,stylist_user_id,status,source_photo_path,
-                  analysis_json,generated_images_json,selected_recommendation_id,created_at,updated_at
+                  source_consent_at,source_consent_version,source_quality_json,
+                  analysis_json,generated_images_json,selected_recommendation_id,generation_status,created_at,updated_at
            FROM consultations WHERE customer_user_id=? ORDER BY created_at DESC`,
         )
         .all(actor.userId)
@@ -183,7 +236,8 @@ export function listConsultations(
       ? database
           .prepare(
             `SELECT id,salon_id,customer_user_id,stylist_user_id,status,source_photo_path,
-                    analysis_json,generated_images_json,selected_recommendation_id,created_at,updated_at
+                    source_consent_at,source_consent_version,source_quality_json,
+                    analysis_json,generated_images_json,selected_recommendation_id,generation_status,created_at,updated_at
              FROM consultations WHERE salon_id=? ORDER BY created_at DESC`,
           )
           .all(actor.tenantId)
@@ -202,16 +256,17 @@ export function deleteExpiredConsultations(database: DatabaseSync, now = Date.no
   const expired = database
     .prepare("SELECT id,source_photo_path FROM consultations WHERE created_at < ?")
     .all(consultationRetentionCutoff(now)) as unknown as Array<{ id: string; source_photo_path: string | null }>;
+  for (const row of expired) cleanupConsultationGeneration(database, row.id);
+  const result = database.prepare("DELETE FROM consultations WHERE created_at < ?").run(consultationRetentionCutoff(now));
   for (const row of expired) {
     if (row.source_photo_path) {
       try {
-        removeSourceImage(row.source_photo_path);
+        removeSourceImageIfUnreferenced(row.source_photo_path, undefined, now);
       } catch {
         // Retention must continue even if an already-missing asset cannot be removed.
       }
     }
   }
-  const result = database.prepare("DELETE FROM consultations WHERE created_at < ?").run(consultationRetentionCutoff(now));
   return Number(result.changes ?? 0);
 }
 
@@ -219,12 +274,13 @@ export function deleteConsultation(database: DatabaseSync, id: string, actor: Co
   const consultation = getConsultation(database, id);
   if (!consultation) throw new ConsultationDomainError("CONSULTATION_NOT_FOUND");
   assertConsultationAccess(actor, consultation);
+  cleanupConsultationGeneration(database, id);
+  database.prepare("DELETE FROM consultations WHERE id=?").run(id);
   if (consultation.sourcePhotoPath) {
     try {
-      removeSourceImage(consultation.sourcePhotoPath);
+      removeSourceImageIfUnreferenced(consultation.sourcePhotoPath);
     } catch {
       // The database record remains authoritative; missing files are already deleted.
     }
   }
-  database.prepare("DELETE FROM consultations WHERE id=?").run(id);
 }

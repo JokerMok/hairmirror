@@ -87,6 +87,23 @@ afterEach(() => {
 });
 
 describe("persistent generation queue", () => {
+  it("does not silently accept work when no model is active", () => {
+    db().prepare("UPDATE model_configs SET enabled=0").run();
+    expect(() =>
+      enqueuePersistentGeneration({
+        task: task(),
+        user: queueUser,
+        ownerKey: `user:${queueUserId}`,
+        idempotencyKey: "request-no-model",
+        sourceImagePath: null,
+        sourceExpiresAt: null,
+      }),
+    ).toThrow("NO_ACTIVE_MODEL");
+    expect(
+      (db().prepare("SELECT COUNT(*) AS count FROM generation_jobs").get() as { count: number }).count,
+    ).toBe(0);
+  });
+
   it("rejects anonymous work before creating a task", () => {
     expect(() =>
       enqueuePersistentGeneration({

@@ -12,7 +12,10 @@ import {
 } from "./entitlements";
 import { recordOperationalEvent } from "./operations";
 import { removeAssetsForTask } from "./asset-retention";
-import { readSourceImage, removeSourceImage } from "./source-storage";
+import {
+  readSourceImage,
+  removeSourceImageIfUnreferenced,
+} from "./source-storage";
 import type { StoredDesignTask } from "./types";
 
 type Row = Record<string, unknown>;
@@ -73,7 +76,7 @@ export function findIdempotentTask(ownerKey: string, idempotencyKey: string) {
   return row ? { taskId: row.task_id, jobId: row.job_id } : null;
 }
 
-export function enqueuePersistentGeneration(input: {
+type EnqueueInput = {
   task: StoredDesignTask;
   user: AuthUser | null;
   ownerKey: string;
@@ -81,20 +84,19 @@ export function enqueuePersistentGeneration(input: {
   sourceImagePath: string | null;
   sourceExpiresAt: number | null;
   metadata?: QueueMetadata;
-}) {
+  reserveAccess?: boolean;
+  accessVariantCount?: number;
+};
+
+function enqueuePersistentGenerationInTransaction(
+  input: EnqueueInput,
+  model: NonNullable<ReturnType<typeof getActiveModelConfig>>,
+  now: string,
+  nowMs: number,
+) {
   const existing = findIdempotentTask(input.ownerKey, input.idempotencyKey);
-  if (existing) {
-    removeSourceImage(input.sourceImagePath);
-    return { ...existing, duplicate: true };
-  }
-  const model = getActiveModelConfig();
-  if (!model) {
-    removeSourceImage(input.sourceImagePath);
-    throw new Error("NO_ACTIVE_MODEL");
-  }
+  if (existing) return { ...existing, duplicate: true };
   const database = db();
-  const now = new Date().toISOString();
-  const nowMs = Date.now();
   const jobId = crypto.randomUUID();
   const maxAttempts = positiveInteger(process.env.GENERATION_MAX_ATTEMPTS, 3);
   const estimatedCost = estimatedGenerationCost(
@@ -104,73 +106,91 @@ export function enqueuePersistentGeneration(input: {
   const payload: QueuePayload = input.metadata
     ? { ...input.task, queueMetadata: input.metadata }
     : input.task;
-  database.exec("BEGIN IMMEDIATE");
-  try {
-    assertGlobalCostFuse(estimatedCost, nowMs);
-    database
-      .prepare(
-        "INSERT INTO design_tasks(id,owner_session_id,user_id,status,preferences_json,variants_json,generation_mode,created_at) VALUES(?,?,?,?,?,?,?,?)",
-      )
-      .run(
-        input.task.id,
-        input.task.ownerSessionId,
-        input.task.userId,
-        "processing",
-        JSON.stringify(input.task.preferences),
-        JSON.stringify(input.task.variants),
-        input.task.generationMode,
-        input.task.createdAt,
-      );
-    database
-      .prepare(
-        "INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,error_code,attempts,queued_at) VALUES(?,?,?,?, 'queued',?,?,0,NULL,0,?)",
-      )
-      .run(
-        jobId,
-        input.task.id,
-        input.user?.id ?? null,
-        model.id,
-        input.task.variants.length,
-        estimatedCost,
-        now,
-      );
+  assertGlobalCostFuse(estimatedCost, nowMs);
+  database
+    .prepare(
+      "INSERT INTO design_tasks(id,owner_session_id,user_id,status,preferences_json,variants_json,generation_mode,created_at) VALUES(?,?,?,?,?,?,?,?)",
+    )
+    .run(
+      input.task.id,
+      input.task.ownerSessionId,
+      input.task.userId,
+      "processing",
+      JSON.stringify(input.task.preferences),
+      JSON.stringify(input.task.variants),
+      input.task.generationMode,
+      input.task.createdAt,
+    );
+  database
+    .prepare(
+      "INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,error_code,attempts,queued_at) VALUES(?,?,?,?, 'queued',?,?,0,NULL,0,?)",
+    )
+    .run(
+      jobId,
+      input.task.id,
+      input.user?.id ?? null,
+      model.id,
+      input.task.variants.length,
+      estimatedCost,
+      now,
+    );
+  if (input.reserveAccess !== false) {
     reserveGenerationAccess({
       jobId,
       user: input.user,
       sessionId: input.task.ownerSessionId,
-      variantCount: input.task.variants.length,
+      variantCount: input.accessVariantCount ?? input.task.variants.length,
       now,
     });
-    database
-      .prepare(
-        "INSERT INTO generation_job_payloads(job_id,owner_session_id,owner_key,idempotency_key,payload_json,source_image_path,source_expires_at,available_at,max_attempts) VALUES(?,?,?,?,?,?,?,?,?)",
-      )
-      .run(
-        jobId,
-        input.task.ownerSessionId,
-        input.ownerKey,
-        input.idempotencyKey,
-        JSON.stringify(payload),
-        input.sourceImagePath,
-        input.sourceExpiresAt,
-        nowMs,
-        maxAttempts,
-      );
+  }
+  database
+    .prepare(
+      "INSERT INTO generation_job_payloads(job_id,owner_session_id,owner_key,idempotency_key,payload_json,source_image_path,source_expires_at,available_at,max_attempts) VALUES(?,?,?,?,?,?,?,?,?)",
+    )
+    .run(
+      jobId,
+      input.task.ownerSessionId,
+      input.ownerKey,
+      input.idempotencyKey,
+      JSON.stringify(payload),
+      input.sourceImagePath,
+      input.sourceExpiresAt,
+      nowMs,
+      maxAttempts,
+    );
+  return { taskId: input.task.id, jobId, duplicate: false };
+}
+
+export function enqueuePersistentGeneration(input: EnqueueInput) {
+  const existing = findIdempotentTask(input.ownerKey, input.idempotencyKey);
+  if (existing) {
+    removeSourceImageIfUnreferenced(input.sourceImagePath);
+    return { ...existing, duplicate: true };
+  }
+  const model = getActiveModelConfig();
+  if (!model) {
+    removeSourceImageIfUnreferenced(input.sourceImagePath);
+    throw new Error("NO_ACTIVE_MODEL");
+  }
+  const database = db();
+  const now = new Date().toISOString();
+  const nowMs = Date.now();
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    const result = enqueuePersistentGenerationInTransaction(input, model, now, nowMs);
     database.exec("COMMIT");
+    recordOperationalEvent("info", "job.queued", "生成任务已入队", result.jobId, { taskId: input.task.id });
+    return result;
   } catch (error) {
     database.exec("ROLLBACK");
     const duplicate = findIdempotentTask(input.ownerKey, input.idempotencyKey);
     if (duplicate) {
-      removeSourceImage(input.sourceImagePath);
+      removeSourceImageIfUnreferenced(input.sourceImagePath);
       return { ...duplicate, duplicate: true };
     }
-    removeSourceImage(input.sourceImagePath);
+    removeSourceImageIfUnreferenced(input.sourceImagePath);
     throw error;
   }
-  recordOperationalEvent("info", "job.queued", "生成任务已入队", jobId, {
-    taskId: input.task.id,
-  });
-  return { taskId: input.task.id, jobId, duplicate: false };
 }
 
 /** Enqueue one generation job per AI recommendation while preserving consultation linkage. */
@@ -186,22 +206,59 @@ export function enqueueConsultationRecommendations(input: {
     idempotencyKey?: string;
   }>;
 }) {
-  return input.recommendations.map((recommendation) =>
-    enqueuePersistentGeneration({
-      task: recommendation.task,
-      user: input.user,
-      ownerKey: input.ownerKey,
-      idempotencyKey:
-        recommendation.idempotencyKey ??
-        `${input.consultationId}:${recommendation.recommendationId}`,
-      sourceImagePath: recommendation.sourceImagePath,
-      sourceExpiresAt: recommendation.sourceExpiresAt,
-      metadata: {
-        consultationId: input.consultationId,
-        recommendationId: recommendation.recommendationId,
-      },
-    }),
-  );
+  const model = getActiveModelConfig();
+  if (!model) {
+    input.recommendations.forEach((item) => removeSourceImageIfUnreferenced(item.sourceImagePath));
+    throw new Error("NO_ACTIVE_MODEL");
+  }
+  const database = db();
+  const now = new Date().toISOString();
+  const nowMs = Date.now();
+  const existing = new Map<string, ReturnType<typeof findIdempotentTask>>();
+  for (const recommendation of input.recommendations) {
+    const key = recommendation.idempotencyKey ?? `${input.consultationId}:${recommendation.recommendationId}`;
+    existing.set(key, findIdempotentTask(input.ownerKey, key));
+  }
+  const hasBundleCharge = database
+    .prepare("SELECT c.status,p.payload_json FROM generation_access_charges c JOIN generation_job_payloads p ON p.job_id=c.job_id")
+    .all() as Array<{ status: string; payload_json: string }>;
+  const chargeForConsultation = hasBundleCharge.some((row) => {
+    try { return (JSON.parse(row.payload_json) as QueuePayload).queueMetadata?.consultationId === input.consultationId; } catch { return false; }
+  });
+  let reservedForBatch = chargeForConsultation;
+  const results: Array<{ taskId: string; jobId: string; duplicate: boolean }> = [];
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    for (const recommendation of input.recommendations) {
+      const idempotencyKey = recommendation.idempotencyKey ?? `${input.consultationId}:${recommendation.recommendationId}`;
+      const duplicate = existing.get(idempotencyKey);
+      if (duplicate) {
+        results.push({ ...duplicate, duplicate: true });
+        continue;
+      }
+      results.push(enqueuePersistentGenerationInTransaction({
+        task: recommendation.task,
+        user: input.user,
+        ownerKey: input.ownerKey,
+        idempotencyKey,
+        sourceImagePath: recommendation.sourceImagePath,
+        sourceExpiresAt: recommendation.sourceExpiresAt,
+        reserveAccess: !reservedForBatch,
+        accessVariantCount: input.recommendations.length,
+        metadata: { consultationId: input.consultationId, recommendationId: recommendation.recommendationId },
+      }, model, now, nowMs));
+      reservedForBatch = true;
+    }
+    updateConsultationGenerationStatus(input.consultationId, now);
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+  results.forEach((result) => {
+    if (!result.duplicate) recordOperationalEvent("info", "job.queued", "生成任务已入队", result.jobId, { consultationId: input.consultationId, taskId: result.taskId });
+  });
+  return results;
 }
 
 export type ConsultationRecommendationJobState = {
@@ -214,6 +271,59 @@ export type ConsultationRecommendationJobState = {
   maxAttempts: number;
   errorCode: string | null;
 };
+
+type LinkedConsultationJob = {
+  id: string;
+  status: ConsultationRecommendationJobState["status"];
+  recommendationId: string;
+  payload: QueuePayload;
+};
+
+function linkedConsultationJobs(consultationId: string): LinkedConsultationJob[] {
+  const rows = db()
+    .prepare("SELECT j.id,j.status,p.payload_json FROM generation_jobs j JOIN generation_job_payloads p ON p.job_id=j.id")
+    .all() as Row[];
+  return rows.flatMap((row) => {
+    try {
+      const payload = JSON.parse(String(row.payload_json)) as QueuePayload;
+      const metadata = payload.queueMetadata;
+      if (metadata?.consultationId !== consultationId || !metadata.recommendationId) return [];
+      return [{ id: String(row.id), status: String(row.status) as LinkedConsultationJob["status"], recommendationId: metadata.recommendationId, payload }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+function updateConsultationGenerationStatus(consultationId: string, now: string) {
+  const jobs = linkedConsultationJobs(consultationId);
+  let status: "idle" | "queued" | "processing" | "partial" | "completed" | "failed" | "cancelled" = "idle";
+  if (jobs.some((job) => job.status === "processing")) status = "processing";
+  else if (jobs.some((job) => job.status === "queued")) status = "queued";
+  else if (jobs.length > 0) {
+    const completed = jobs.filter((job) => job.status === "completed").length;
+    if (completed === jobs.length) status = "completed";
+    else if (completed > 0) status = "partial";
+    else if (jobs.every((job) => job.status === "cancelled")) status = "cancelled";
+    else status = "failed";
+  }
+  db().prepare("UPDATE consultations SET generation_status=?,updated_at=? WHERE id=?").run(status, now, consultationId);
+  return status;
+}
+
+function finalizeConsultationBundleAccess(consultationId: string) {
+  const jobs = linkedConsultationJobs(consultationId);
+  if (!jobs.length || jobs.some((job) => job.status === "queued" || job.status === "processing")) return false;
+  const chargeRows = db()
+    .prepare("SELECT c.job_id,c.status,p.payload_json FROM generation_access_charges c JOIN generation_job_payloads p ON p.job_id=c.job_id")
+    .all() as Array<{ job_id: string; status: string; payload_json: string }>;
+  const charge = chargeRows.find((row) => {
+    if (row.status !== "reserved") return false;
+    try { return (JSON.parse(row.payload_json) as QueuePayload).queueMetadata?.consultationId === consultationId; } catch { return false; }
+  });
+  if (!charge) return false;
+  return finalizeGenerationAccess(charge.job_id, jobs.some((job) => job.status === "completed"));
+}
 
 /** Read durable queue state for a consultation's recommendations. */
 export function listConsultationRecommendationJobs(
@@ -347,6 +457,7 @@ function retryable(code: string) {
     "PROVIDER_NOT_IMPLEMENTED",
     "MODEL_DISABLED",
     "MODEL_NOT_FOUND",
+    "RESULT_IMAGE_MISSING",
   ].some((item) => code.startsWith(item));
 }
 
@@ -373,6 +484,30 @@ function finalizeSuccess(
         "UPDATE design_tasks SET status='completed',variants_json=?,generation_mode=? WHERE id=?",
       )
       .run(JSON.stringify(variants), generated.mode, job.taskId);
+    const metadata = job.payload.queueMetadata;
+    if (metadata?.consultationId && metadata.recommendationId) {
+      const resultImageUrl = variants.find((variant) => variant.resultImageUrl)
+        ?.resultImageUrl ?? null;
+      database
+        .prepare(
+          "UPDATE recommendations SET image_url=? WHERE id=? AND consultation_id=?",
+        )
+        .run(resultImageUrl, metadata.recommendationId, metadata.consultationId);
+      const generatedImages = database
+        .prepare(
+          "SELECT id AS recommendationId,image_url AS imageUrl FROM recommendations WHERE consultation_id=? ORDER BY rank",
+        )
+        .all(metadata.consultationId);
+      database
+        .prepare(
+          "UPDATE consultations SET generated_images_json=?,updated_at=? WHERE id=?",
+        )
+        .run(JSON.stringify(generatedImages), now, metadata.consultationId);
+      updateConsultationGenerationStatus(metadata.consultationId, now);
+      finalizeConsultationBundleAccess(metadata.consultationId);
+    } else {
+      finalizeGenerationAccess(job.id, true);
+    }
     database
       .prepare(
         "UPDATE generation_job_payloads SET lock_token=NULL,locked_at=NULL,heartbeat_at=NULL,last_error=NULL WHERE job_id=?",
@@ -390,19 +525,18 @@ function finalizeSuccess(
         variants.length,
         now,
       );
-    finalizeGenerationAccess(job.id, true);
     database.exec("COMMIT");
   } catch (error) {
     database.exec("ROLLBACK");
     throw error;
   }
   try {
-    removeSourceImage(job.sourceImagePath);
     database
       .prepare(
         "UPDATE generation_job_payloads SET source_image_path=NULL,source_expires_at=NULL WHERE job_id=?",
       )
       .run(job.id);
+    removeSourceImageIfUnreferenced(job.sourceImagePath, job.id);
   } catch (error) {
     recordOperationalEvent(
       "warning",
@@ -432,7 +566,11 @@ function finalizeFailure(job: ClaimedJob, code: string, costMicros: number) {
           "UPDATE generation_jobs SET status='failed',error_code=?,actual_cost_micros=actual_cost_micros+?,completed_at=? WHERE id=? AND status IN ('queued','processing')",
         )
         .run(code, Math.max(0, costMicros), now, job.id).changes > 0;
-    if (changed) finalizeGenerationAccess(job.id, false);
+    const metadata = job.payload.queueMetadata;
+    if (changed && metadata?.consultationId) {
+      updateConsultationGenerationStatus(metadata.consultationId, now);
+      finalizeConsultationBundleAccess(metadata.consultationId);
+    } else if (changed) finalizeGenerationAccess(job.id, false);
     database
       .prepare("UPDATE design_tasks SET status='failed' WHERE id=?")
       .run(job.taskId);
@@ -508,7 +646,11 @@ function finalizeCancellation(job: ClaimedJob, costMicros = 0) {
           "UPDATE generation_jobs SET status='cancelled',actual_cost_micros=actual_cost_micros+?,completed_at=? WHERE id=? AND status IN ('queued','processing')",
         )
         .run(Math.max(0, costMicros), now, job.id).changes > 0;
-    if (changed) finalizeGenerationAccess(job.id, false);
+    const metadata = job.payload.queueMetadata;
+    if (changed && metadata?.consultationId) {
+      updateConsultationGenerationStatus(metadata.consultationId, now);
+      finalizeConsultationBundleAccess(metadata.consultationId);
+    } else if (changed) finalizeGenerationAccess(job.id, false);
     database
       .prepare("UPDATE design_tasks SET status='failed' WHERE id=?")
       .run(job.taskId);
@@ -524,12 +666,12 @@ function finalizeCancellation(job: ClaimedJob, costMicros = 0) {
   }
   removeAssetsForTask(job.taskId);
   try {
-    removeSourceImage(job.sourceImagePath);
     database
       .prepare(
         "UPDATE generation_job_payloads SET source_image_path=NULL,source_expires_at=NULL WHERE job_id=?",
       )
       .run(job.id);
+    removeSourceImageIfUnreferenced(job.sourceImagePath, job.id);
   } catch (error) {
     recordOperationalEvent(
       "warning",
@@ -571,6 +713,11 @@ export async function processNextGenerationJob(now = Date.now()) {
       },
       runtime,
     );
+    if (job.payload.variants.some((variant) => !generated.imageUrls[variant.template.id])) {
+      const error = new Error("RESULT_IMAGE_MISSING") as Error & { actualCostMicros?: number };
+      error.actualCostMicros = generated.actualCostMicros;
+      throw error;
+    }
     if (isCancelRequested(job.id)) {
       finalizeCancellation(job, generated.actualCostMicros);
       return { status: "cancelled" as const, jobId: job.id };
@@ -639,11 +786,36 @@ export function requestGenerationCancellation(taskId: string) {
 export function retryFailedGeneration(taskId: string, user: AuthUser | null) {
   const row = db()
     .prepare(
-      "SELECT j.*,p.source_image_path FROM generation_jobs j JOIN generation_job_payloads p ON p.job_id=j.id WHERE j.task_id=? AND j.status='failed'",
+      "SELECT j.*,p.source_image_path,p.source_expires_at,p.payload_json FROM generation_jobs j JOIN generation_job_payloads p ON p.job_id=j.id WHERE j.task_id=? AND j.status='failed'",
     )
     .get(taskId) as Row | undefined;
   if (!row) return { ok: false as const, reason: "NOT_RETRYABLE" };
-  const source = row.source_image_path ? String(row.source_image_path) : null;
+  let source = row.source_image_path ? String(row.source_image_path) : null;
+  let sourceExpiresAt = row.source_expires_at ? Number(row.source_expires_at) : null;
+  let metadata: QueueMetadata | undefined;
+  try {
+    metadata = (JSON.parse(String(row.payload_json)) as QueuePayload).queueMetadata;
+  } catch {
+    metadata = undefined;
+  }
+  if (!source) {
+    try {
+      if (metadata?.consultationId) {
+        const consultation = db()
+          .prepare("SELECT source_photo_path,created_at FROM consultations WHERE id=?")
+          .get(metadata.consultationId) as
+          | { source_photo_path?: string | null; created_at?: string }
+          | undefined;
+        source = consultation?.source_photo_path ?? null;
+        const createdAt = consultation?.created_at ? Date.parse(consultation.created_at) : NaN;
+        sourceExpiresAt = Number.isFinite(createdAt)
+          ? createdAt + 30 * 24 * 60 * 60 * 1000
+          : sourceExpiresAt;
+      }
+    } catch {
+      source = null;
+    }
+  }
   if (
     getModelRuntimeById(String(row.model_config_id))?.provider ===
       "runninghub" &&
@@ -655,21 +827,38 @@ export function retryFailedGeneration(taskId: string, user: AuthUser | null) {
   database.exec("BEGIN IMMEDIATE");
   try {
     assertGlobalCostFuse(Number(row.estimated_cost_micros));
-    reserveGenerationAccess({
-      jobId: String(row.id),
-      user,
-      sessionId: String(
-        (
-          database
-            .prepare(
-              "SELECT owner_session_id FROM generation_job_payloads WHERE job_id=?",
-            )
-            .get(String(row.id)) as { owner_session_id: string }
-        ).owner_session_id,
-      ),
-      variantCount: Number(row.variant_count),
-      now,
-    });
+    const accessCharge = database
+      .prepare("SELECT status FROM generation_access_charges WHERE job_id=?")
+      .get(String(row.id)) as { status?: string } | undefined;
+    let consultationChargeStatus: string | undefined;
+    if (metadata?.consultationId) {
+      const charges = database
+        .prepare("SELECT c.status,p.payload_json FROM generation_access_charges c JOIN generation_job_payloads p ON p.job_id=c.job_id")
+        .all() as Array<{ status: string; payload_json: string }>;
+      consultationChargeStatus = charges.find((charge) => {
+        try { return (JSON.parse(charge.payload_json) as QueuePayload).queueMetadata?.consultationId === metadata?.consultationId; } catch { return false; }
+      })?.status;
+    }
+    const shouldReserve = metadata?.consultationId
+      ? consultationChargeStatus !== "reserved" && consultationChargeStatus !== "consumed"
+      : !accessCharge;
+    if (shouldReserve) {
+      reserveGenerationAccess({
+        jobId: String(row.id),
+        user,
+        sessionId: String(
+          (
+            database
+              .prepare(
+                "SELECT owner_session_id FROM generation_job_payloads WHERE job_id=?",
+              )
+              .get(String(row.id)) as { owner_session_id: string }
+          ).owner_session_id,
+        ),
+        variantCount: metadata?.consultationId ? linkedConsultationJobs(metadata.consultationId).length : Number(row.variant_count),
+        now,
+      });
+    }
     database
       .prepare(
         "UPDATE generation_jobs SET status='queued',error_code=NULL,attempts=0,started_at=NULL,completed_at=NULL WHERE id=?",
@@ -677,12 +866,13 @@ export function retryFailedGeneration(taskId: string, user: AuthUser | null) {
       .run(String(row.id));
     database
       .prepare(
-        "UPDATE generation_job_payloads SET available_at=?,cancel_requested=0,lock_token=NULL,locked_at=NULL,heartbeat_at=NULL,last_error=NULL WHERE job_id=?",
+        "UPDATE generation_job_payloads SET source_image_path=?,source_expires_at=?,available_at=?,cancel_requested=0,lock_token=NULL,locked_at=NULL,heartbeat_at=NULL,last_error=NULL WHERE job_id=?",
       )
-      .run(Date.now(), String(row.id));
+      .run(source, sourceExpiresAt, Date.now(), String(row.id));
     database
       .prepare("UPDATE design_tasks SET status='processing' WHERE id=?")
       .run(taskId);
+    if (metadata?.consultationId) updateConsultationGenerationStatus(metadata.consultationId, now);
     database.exec("COMMIT");
   } catch (error) {
     database.exec("ROLLBACK");

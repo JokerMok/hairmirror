@@ -331,9 +331,13 @@ function createDatabase(path: string) {
       stylist_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
       status TEXT NOT NULL CHECK(status IN ('draft','analyzing','ready','shared','completed','archived')),
       source_photo_path TEXT,
+      source_consent_at TEXT,
+      source_consent_version TEXT,
+      source_quality_json TEXT,
       analysis_json TEXT,
       generated_images_json TEXT,
       selected_recommendation_id TEXT,
+      generation_status TEXT NOT NULL DEFAULT 'idle' CHECK(generation_status IN ('idle','queued','processing','partial','completed','failed','cancelled')),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -372,6 +376,18 @@ function createDatabase(path: string) {
     .all() as Array<{ name: string }>;
   if (!userColumns.some((column) => column.name === "email"))
     database.exec("ALTER TABLE users ADD COLUMN email TEXT");
+  const consultationColumns = database
+    .prepare("PRAGMA table_info(consultations)")
+    .all() as Array<{ name: string }>;
+  const consultationMigrations: Array<[string, string]> = [
+    ["source_consent_at", "ALTER TABLE consultations ADD COLUMN source_consent_at TEXT"],
+    ["source_consent_version", "ALTER TABLE consultations ADD COLUMN source_consent_version TEXT"],
+    ["source_quality_json", "ALTER TABLE consultations ADD COLUMN source_quality_json TEXT"],
+    ["generation_status", "ALTER TABLE consultations ADD COLUMN generation_status TEXT NOT NULL DEFAULT 'idle'"],
+  ];
+  for (const [name, statement] of consultationMigrations) {
+    if (!consultationColumns.some((column) => column.name === name)) database.exec(statement);
+  }
   database.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL",
   );

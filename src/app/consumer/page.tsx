@@ -11,7 +11,7 @@ export default async function ConsumerPage() {
   const user = getUserByToken(jar.get(AUTH_COOKIE)?.value);
   const zh = locale === "zh-CN";
   const t = (en: string, cn: string) => (zh ? cn : en);
-  const startHref = user ? "/#studio" : "/login?next=%2F%23studio";
+  const startHref = user ? "/consumer/consultations/new" : "/login?next=%2Fconsumer%2Fconsultations%2Fnew";
 
   return (
     <main className="min-h-screen overflow-x-clip">

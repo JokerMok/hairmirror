@@ -22,6 +22,13 @@ const DEMO_IMAGES: Record<string, string> = {
   "clean-side": "/demo-results/natural-side-part.png",
   "textured-crop": "/demo-results/textured-crop.png",
   "french-bob": "/demo-results/french-bob.png",
+  "soft-waves": "/demo-results/french-bob.png",
+  "collar-layer": "/demo-results/french-bob.png",
+  "long-layer": "/demo-results/french-bob.png",
+  "air-bangs": "/demo-results/french-bob.png",
+  "neutral-shag": "/demo-results/textured-crop.png",
+  "long-soft-curl": "/demo-results/french-bob.png",
+  "sleek-long": "/demo-results/french-bob.png",
 };
 
 export async function generateHairstyleImages(

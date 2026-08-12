@@ -27,7 +27,7 @@ export function configuredConsultationTimeoutMs() {
 /**
  * Creates the optional HTTP adapter used by salon consultation analysis.
  * The adapter is intentionally opt-in: without a URL, the caller must use the
- * safe deterministic fallback and no customer photo metadata leaves the app.
+ * safe deterministic fallback and no customer photo leaves the app.
  */
 export function createConfiguredConsultationProvider(
   config: Partial<ConsultationProviderConfig> = {},
@@ -56,7 +56,11 @@ export function createConfiguredConsultationProvider(
           "content-type": "application/json",
           ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
         },
-        body: JSON.stringify({ imageId: input.imageId ?? null, role: input.role ?? "consumer" }),
+        body: JSON.stringify({
+          imageId: input.imageId ?? null,
+          imageDataUrl: input.imageDataUrl ?? null,
+          role: input.role ?? "consumer",
+        }),
       });
       if (!response.ok) throw new Error(`CONSULTATION_PROVIDER_HTTP_${response.status}`);
       const payload = (await response.json()) as unknown;
