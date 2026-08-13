@@ -10,7 +10,7 @@ import { absoluteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "AI Hairstyle Preview FAQ",
   description:
-    "Answers about HairMirror AI hairstyle previews, free trials, personal packs, salon plans, photo privacy, and result limitations.",
+    "Answers about the HairMirror free pilot, salon consultation workflow, photo privacy, and realistic result expectations.",
   alternates: { canonical: "/faq" },
 };
 
@@ -23,17 +23,17 @@ const ENGLISH_FAQ = [
   {
     question: "Is the first hairstyle preview free?",
     answer:
-      "Yes. Create an account and sign in to receive one free complete preview. It includes three hairstyle directions and does not require payment.",
+      "Yes. HairMirror is currently in a free pilot. Sign in to create a consultation with three hairstyle directions; no payment is required during this validation phase.",
   },
   {
-    question: "What is included in the Personal Preview Pack?",
+    question: "What does the free pilot mean?",
     answer:
-      "The Personal Preview Pack costs $1.99 USD and includes five complete previews. Each preview returns three hairstyle directions. Credits do not expire, and failed or cancelled jobs do not consume a credit.",
+      "We are validating whether the consultation workflow helps customers and stylists make decisions faster. Paid plans, packs, and salon billing are not active yet; any future change will be announced before payment is requested.",
   },
   {
-    question: "What is included in the Salon Pro plan?",
+    question: "How can a stylist use HairMirror with a client?",
     answer:
-      "Salon Pro costs $29 USD per month and includes 200 complete previews shared by the salon owner and staff accounts, plus saved history and subscription management through Gumroad.",
+      "A stylist can create a client consultation, record practical constraints such as length and daily styling time, compare three directions, save one choice, and share the resulting consultation card with the client or team.",
   },
   {
     question: "How does HairMirror protect uploaded photos?",
@@ -52,10 +52,10 @@ export default async function FaqPage() {
   const zh = locale === "zh-CN";
   const items = zh
     ? [
-        { question: "AI 发型预览是怎样生成的？", answer: "上传清晰的正面照片并选择偏好后，发型镜会生成三个发型方向，供你并排比较。每次完整体验消耗一个次数。" },
-        { question: "第一次发型预览免费吗？", answer: "免费。注册并登录后可获得一次完整体验，包含三个发型方向，无需付款。" },
-        { question: "个人次数包含什么？", answer: "个人次数包价格为 1.99 美元，包含 5 次完整体验，每次返回三个发型方向。次数不过期，任务失败或取消不会扣除次数。" },
-        { question: "Salon Pro 门店版包含什么？", answer: "Salon Pro 价格为每月 29 美元，包含 200 次完整体验，由店主和员工账号共享，并提供历史记录及 Gumroad 订阅管理。" },
+        { question: "AI 发型预览是怎样生成的？", answer: "上传清晰的正面照片并选择偏好后，发型镜会生成三个发型方向，供你并排比较。当前免费试用阶段不需要购买次数。" },
+        { question: "第一次发型预览免费吗？", answer: "免费。HairMirror 目前处于免费试用阶段，登录后可以创建一次咨询并获得三个发型方向，当前无需付款。" },
+        { question: "免费试用阶段是什么意思？", answer: "我们正在验证这套咨询流程是否能帮助客户和发型师更快确定方向。付费次数包、门店订阅和账单功能暂未启用；未来如有变化，会在要求付款前提前说明。" },
+        { question: "发型师如何和客户一起使用？", answer: "发型师可以为客户创建咨询，记录发长、打理时间等实际条件，比较三个方向，保存一个选择，并把最终沟通卡发给客户或团队。" },
         { question: "上传照片如何保护？", answer: "原照片在成功生成或取消后删除；连续失败时最多保留 24 小时。生成结果及相关选择默认保留 30 天，也可提前删除。" },
         { question: "实际剪发会和 AI 预览完全一样吗？", answer: "不一定。发型镜用于方案规划和沟通。实际效果还会受到发质、发量、当前长度、造型方式和发型师技术影响，请与专业发型师确认最终方案。" },
       ]
@@ -89,7 +89,7 @@ export default async function FaqPage() {
             {zh ? "使用前，你可能想了解这些" : "Everything to know before your first preview"}
           </h1>
           <p className="mt-6 max-w-2xl leading-7 text-[var(--text-muted)]">
-            {zh ? "包括生成方式、价格、免费体验、照片保存和效果边界。" : "Clear answers about generation, pricing, the free preview, photo retention, and realistic expectations."}
+            {zh ? "包括生成方式、免费试用、门店咨询流程、照片保存和效果边界。" : "Clear answers about generation, the free pilot, the salon workflow, photo retention, and realistic expectations."}
           </p>
         </section>
         <div className="border-y border-[var(--line)]">
@@ -105,7 +105,7 @@ export default async function FaqPage() {
         </div>
         <footer className="flex flex-wrap items-center gap-3 py-12">
           <Link href="/#studio" className="button-primary">{zh ? "开始免费体验" : "Start your free preview"}</Link>
-          <Link href="/pricing" className="button-secondary">{zh ? "查看价格" : "View pricing"}</Link>
+          <Link href="/salon" className="button-secondary">{zh ? "查看发型师流程" : "See the stylist workflow"}</Link>
           <Link href="/privacy" className="px-3 py-2 text-sm underline">{zh ? "隐私政策" : "Privacy Policy"}</Link>
         </footer>
       </div>

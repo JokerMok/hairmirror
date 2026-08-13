@@ -146,9 +146,7 @@ export function StudioWizard({
   const [task, setTask] = useState<DesignTask | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [errorAction, setErrorAction] = useState<"login" | "pricing" | null>(
-    null,
-  );
+  const [errorAction, setErrorAction] = useState<"login" | null>(null);
   const [selected, setSelected] = useState("");
   const [resultSignal, setResultSignal] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<
@@ -255,9 +253,7 @@ export function StudioWizard({
       setErrorAction(
         code === "AUTH_REQUIRED"
           ? "login"
-          : code === "PAYMENT_REQUIRED"
-            ? "pricing"
-            : null,
+          : null,
       );
       setError(
         code === "AUTH_REQUIRED"
@@ -267,8 +263,8 @@ export function StudioWizard({
             )
           : code === "PAYMENT_REQUIRED"
           ? t(
-              "Your free preview has been used. Buy a preview pack to continue.",
-              "免费体验已使用，购买次数包后可以继续生成。",
+              "Paid access is not enabled during this pilot yet. Contact us if you need more test runs.",
+              "当前试用阶段尚未开放付费入口，如需更多测试次数请联系试用负责人。",
             )
           : t(
               "We could not generate styles right now. Try again later.",
@@ -414,7 +410,7 @@ export function StudioWizard({
         <nav className="site-nav" aria-label={t("Main navigation", "主导航")}>
           <a href="#examples">{t("Examples", "案例")}</a>
           <a href="#studio">{t("Try it", "开始体验")}</a>
-          <Link href="/pricing">{t("Pricing", "定价")}</Link>
+          <Link href="/salon">{t("For stylists", "发型师工作台")}</Link>
           <Link href="/faq">{t("FAQ", "常见问题")}</Link>
         </nav>
         <div className="header-actions">
@@ -447,15 +443,15 @@ export function StudioWizard({
                 </p>
                 <div className="hero-actions">
                   <a href="#studio" className="button-primary">
-                    {t("Try one preview free", "免费体验一次")}
+                    {t("Start a free consultation", "免费开始一次咨询")}
                     <ArrowRight size={18} />
                   </a>
-                  <Link href="/pricing" className="button-secondary">
-                    {t("View pricing", "查看价格")}
+                  <Link href="/salon" className="button-secondary">
+                    {t("For stylists: create a client consultation", "发型师：创建客户咨询")}
                   </Link>
                 </div>
                 <ul className="hero-proof">
-                  <li><Check size={16} />{t("Sign in, first preview free", "登录后首次完整体验免费")}</li>
+                  <li><Check size={16} />{t("No payment during the pilot", "试用阶段无需付款")}</li>
                   <li><Check size={16} />{t("About one minute", "约一分钟")}</li>
                   <li><ShieldCheck size={16} />{t("Delete anytime", "随时删除")}</li>
                 </ul>
@@ -472,11 +468,11 @@ export function StudioWizard({
           </>
         )}
 
-        <section id="studio" className="studio-section">
+        <section id="studio" className="studio-section" aria-labelledby="studio-heading">
           <div className="studio-heading">
             <div>
               <p className="eyebrow">{t("Hairstyle studio", "发型设计台")}</p>
-              <h2>{t("Create your preview", "创建你的发型预览")}</h2>
+              <h2 id="studio-heading">{t("Create your consultation", "创建你的发型咨询")}</h2>
             </div>
             <div className="step-meta">
               <span>{t("Step", "步骤")} {Math.min(step + 1, 4)} / 4</span>
@@ -892,16 +888,10 @@ export function StudioWizard({
                 {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
                 {errorAction && (
                   <Link
-                    href={
-                      errorAction === "login"
-                        ? "/login?next=%2F%23studio"
-                        : "/pricing"
-                    }
+                    href="/login?next=%2F%23studio"
                     className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--brand)] underline"
                   >
-                    {errorAction === "login"
-                      ? t("Sign in or create an account", "登录或创建账号")
-                      : t("View preview packs", "查看个人次数包")}
+                    {t("Sign in or create an account", "登录或创建账号")}
                   </Link>
                 )}
                 <div className="mt-7 flex flex-wrap justify-between gap-3">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, Scissors } from "lucide-react";
 import { cookies } from "next/headers";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -16,6 +17,21 @@ export default async function SalonPage() {
   const startLabel = user?.role === "personal"
     ? t("Continue as customer", "以客户身份继续")
     : t("Create a consultation", "创建客户咨询");
+  const workflow = zh
+    ? [
+        ["01", "客户照片与要求", "上传正面照片，记录想变长短、打理时间和接受烫染程度。"],
+        ["02", "三种方向", "系统把模糊描述整理成三种可比较的发型轮廓。"],
+        ["03", "一起筛选", "发型师和客户并排查看，保存最接近实际条件的一种。"],
+        ["04", "执行要点", "确认长度、层次、刘海和日常打理要求。"],
+        ["05", "沟通卡", "把选中的方向和注意事项发给客户或交给团队执行。"],
+      ]
+    : [
+        ["01", "Client photo and brief", "Upload a front-facing photo and capture length, styling time, and treatment constraints."],
+        ["02", "Three directions", "Turn a vague request into three silhouettes that are easy to compare."],
+        ["03", "Decide together", "Review the options with the client and save the direction that fits real conditions."],
+        ["04", "Execution notes", "Confirm length, layers, fringe, and the upkeep the client will actually do."],
+        ["05", "Communication card", "Send the selected direction and practical notes to the client or the team."],
+      ];
 
   return (
     <main className="min-h-screen overflow-x-clip">
@@ -53,6 +69,59 @@ export default async function SalonPage() {
             <span>{t("Practical upkeep notes", "可落地的打理建议")}</span>
             <span>{t("A shareable consultation card", "可分享的咨询沟通卡")}</span>
           </div>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] border border-[var(--line)] bg-white p-6 shadow-[var(--shadow-sm)] md:mt-10 md:p-10" aria-labelledby="workflow-title">
+          <div className="max-w-2xl">
+            <p className="eyebrow">{t("ONE CONSULTATION", "一次咨询")}</p>
+            <h2 id="workflow-title" className="mt-3 text-3xl font-semibold tracking-[-.04em] md:text-4xl">
+              {t("From a vague request to a card the client can take home.", "从模糊需求，到客户可以带走的沟通卡。")}
+            </h2>
+            <p className="mt-4 leading-7 text-[var(--text-muted)]">
+              {t("This is the intended salon workflow—not just a before-and-after image.", "这里展示的是完整的门店咨询流程，而不只是前后对比图。")}
+            </p>
+          </div>
+          <div className="mt-8 grid gap-3 md:grid-cols-5">
+            {workflow.map(([number, title, description]) => (
+              <article key={number} className="rounded-2xl bg-[#f5f7f3] p-4">
+                <span className="text-xs font-bold tracking-[.14em] text-[var(--brand)]">{number}</span>
+                <h3 className="mt-5 text-sm font-semibold leading-5">{title}</h3>
+                <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">{description}</p>
+              </article>
+            ))}
+          </div>
+
+          <article className="mt-6 grid overflow-hidden rounded-3xl border border-[var(--line)] bg-[#f8faf7] lg:grid-cols-[.8fr_1.2fr]">
+            <div className="grid gap-3 p-5 sm:grid-cols-[140px_1fr] lg:grid-cols-1 lg:p-6">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#e2e9e4]">
+                <Image src="/showcase/sources/man-02.jpg" alt={t("Example client source photo", "示例客户原始照片")} fill sizes="(max-width: 640px) 34vw, 140px" className="object-cover object-center" />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--brand)]">{t("Example client brief", "示例客户需求")}</p>
+                <p className="mt-3 text-sm leading-6 text-[#33433d]">{t("Keep the length around the collar, look more relaxed, and stay within ten minutes of daily styling.", "希望保留到锁骨附近，整体更松弛，每天打理控制在十分钟内。")}</p>
+              </div>
+            </div>
+            <div className="border-t border-[var(--line)] p-5 lg:border-l lg:border-t-0 lg:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--brand)]">{t("Selected direction", "已选方向")}</p>
+                  <h3 className="mt-2 text-xl font-semibold">{t("Collar layers", "锁骨层次")}</h3>
+                </div>
+                <span className="rounded-full bg-[#e4f0ec] px-3 py-1.5 text-xs font-semibold text-[var(--brand)]">{t("Ready to discuss", "可进入沟通")}</span>
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                {["style-01.jpg", "style-02.jpg", "style-03.jpg"].map((file, index) => (
+                  <div key={file} className={`relative aspect-[4/5] overflow-hidden rounded-xl ${index === 2 ? "ring-2 ring-[var(--brand)] ring-offset-2" : ""}`}>
+                    <Image src={`/showcase/cases/case-03/${file}`} alt={t(`Option ${index + 1}`, `方案 ${index + 1}`)} fill sizes="(max-width: 1024px) 30vw, 180px" className="object-cover object-center" />
+                  </div>
+                ))}
+              </div>
+              <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                <div className="rounded-xl bg-white p-3"><dt className="text-xs text-[var(--text-muted)]">{t("Cut plan", "剪裁方向")}</dt><dd className="mt-1 font-medium">{t("Collar length · soft layers", "锁骨长度 · 柔和层次")}</dd></div>
+                <div className="rounded-xl bg-white p-3"><dt className="text-xs text-[var(--text-muted)]">{t("Upkeep", "日常打理")}</dt><dd className="mt-1 font-medium">{t("Low · under 10 min", "低 · 十分钟以内")}</dd></div>
+              </dl>
+            </div>
+          </article>
         </section>
       </div>
     </main>

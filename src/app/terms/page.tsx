@@ -5,7 +5,7 @@ import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "Terms for HairMirror accounts, AI hairstyle previews, personal packs, salon subscriptions, cancellation, and acceptable use.",
+  description: "Terms for HairMirror accounts, AI hairstyle previews, the free pilot, and acceptable use.",
   alternates: { canonical: "/terms" },
 };
 
@@ -23,12 +23,12 @@ export default async function TermsPage() {
           b: "你应提供真实、合法的账号信息，并妥善保管登录凭据。不得上传未获授权的照片，不得绕过额度、费用或安全限制。",
         },
         {
-          t: "3. 订阅与续费",
-          b: "订阅通过 Paddle 以美元结算并自动续费。最终价格、账单周期和适用税费以 Paddle 结账页为准。你可以通过 Paddle 客户门户管理付款方式、账单和取消续费。",
+          t: "3. 免费试用阶段",
+          b: "当前产品处于免费试用与工作流验证阶段，不要求付款，也没有启用中的个人次数包或门店订阅。未来如启用付费服务，我们会在付款前公布价格、服务范围、取消和退款规则。",
         },
         {
-          t: "4. 退款与取消",
-          b: "取消订阅后，权益通常持续到当前已付费周期结束。法律另有要求或产品页面另有承诺的除外，已开始的订阅周期不按未使用额度自动折算退款。",
+          t: "4. 服务变更与取消",
+          b: "你可以停止使用服务并删除可删除的咨询记录。试用阶段的功能、开放范围和生成能力可能调整或暂时关闭；如未来启用付费服务，将在付款前另行说明适用的取消和退款规则。",
         },
         {
           t: "5. 可接受使用",
@@ -45,12 +45,12 @@ export default async function TermsPage() {
           b: "Provide accurate account information and protect your credentials. Do not upload photos without permission or bypass usage, billing, or security controls.",
         },
         {
-          t: "3. Subscriptions",
-          b: "Subscriptions are billed in USD through Paddle and renew automatically. Paddle Checkout is the source of truth for final price, billing interval, and applicable tax. Use the Paddle customer portal to manage payment methods, invoices, and cancellation.",
+          t: "3. Free pilot",
+          b: "HairMirror is currently a free pilot for validating the consultation workflow. No payment is required and no personal pack or salon subscription is active. If paid services launch, we will publish the price, scope, cancellation, and refund terms before asking for payment.",
         },
         {
-          t: "4. Cancellation and refunds",
-          b: "After cancellation, access normally continues through the paid billing period. Unless required by law or expressly offered, unused generation allowance does not automatically create a prorated refund.",
+          t: "4. Changes and stopping use",
+          b: "You may stop using the service and delete records that are available for deletion. During the pilot, features, availability, and generation capacity may change or be temporarily paused. Any future paid service will provide its cancellation and refund terms before checkout.",
         },
         {
           t: "5. Acceptable use",

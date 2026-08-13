@@ -19,3 +19,10 @@ only the hairstyle direction. They are not customer submissions.
   <https://images.unsplash.com/photo-1500648767791-00dcc994a43e>.
 - `case-04/` — based on the Unsplash source image
   <https://images.unsplash.com/photo-1534528741775-53994a69daeb>.
+
+The source references shown beside cases 02–04 are the same demonstration
+portraits used to create those comparison outputs:
+
+- `sources/man-01.jpg` — Craig Tidball, <https://unsplash.com/photos/X8xRBoeJ8xM>
+- `sources/man-02.jpg` — <https://images.unsplash.com/photo-1500648767791-00dcc994a43e>
+- `sources/woman-02.jpg` — <https://images.unsplash.com/photo-1534528741775-53994a69daeb>

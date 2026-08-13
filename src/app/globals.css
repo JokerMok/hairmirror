@@ -124,6 +124,13 @@ input:not([type="checkbox"]):not([type="range"]):focus, select:focus, textarea:f
 .showcase-case-head span { color: var(--brand); font-size: .68rem; font-weight: 760; letter-spacing: .12em; text-transform: uppercase; }
 .showcase-case-head h3 { margin-top: 5px; font-size: 1.2rem; font-weight: 680; letter-spacing: -.025em; }
 .showcase-case-head > p { color: var(--text-muted); font-size: .78rem; }
+.showcase-source-row { display: grid; grid-template-columns: 180px 1fr; gap: 22px; align-items: center; padding: 18px 30px; border-top: 1px solid var(--line); background: #fbfcfa; }
+.showcase-source-card { min-width: 0; }
+.showcase-source-image { position: relative; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 14px; background: var(--surface-soft); }
+.showcase-source-card figcaption { margin-top: 8px; color: var(--text-muted); font-size: .73rem; font-weight: 680; text-align: center; }
+.showcase-source-copy { max-width: 420px; }
+.showcase-source-copy span { color: var(--brand); font-size: .68rem; font-weight: 760; letter-spacing: .12em; text-transform: uppercase; }
+.showcase-source-copy p { margin-top: 8px; color: var(--text-muted); font-size: .86rem; line-height: 1.65; }
 .showcase-triptych { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--line); }
 .showcase-style { min-width: 0; background: var(--surface); }
 .showcase-style + .showcase-style { border-left: 1px solid rgba(255,255,255,.68); }
@@ -207,6 +214,10 @@ input:not([type="checkbox"]):not([type="range"]):focus, select:focus, textarea:f
   .showcase-heading > p { margin-top: 10px; }
   .showcase-case-head { min-height: 78px; padding: 14px 18px; }
   .showcase-case-head > p { display: none; }
+  .showcase-source-row { grid-template-columns: 28vw 1fr; gap: 14px; padding: 14px 18px; }
+  .showcase-source-copy p { font-size: .76rem; line-height: 1.55; }
+  .showcase-source-copy span { font-size: .58rem; }
+  .showcase-source-card figcaption { font-size: .65rem; }
   .showcase-style figcaption { min-height: 48px; padding: 9px 4px; font-size: clamp(.62rem, 3vw, .76rem); }
   .showcase-style-image > span { right: 7px; bottom: 7px; font-size: .56rem; }
   .showcase-navigation { grid-template-columns: 44px 1fr 44px; gap: 8px; padding: 14px 12px 16px; }

@@ -254,7 +254,7 @@ export default async function AccountPage({
               href="/pricing"
               className="button-primary"
             >
-              {t("View pricing", "查看价格")}
+              {t("View pilot details", "查看试用说明")}
             </Link>
           )}
         </section>

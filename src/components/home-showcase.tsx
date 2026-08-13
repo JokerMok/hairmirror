@@ -9,6 +9,7 @@ const cases = [
   {
     title: { en: "Soft, wearable length", zh: "柔和日常长发" },
     note: { en: "Long hair · three levels of movement", zh: "长发 · 三种不同动感" },
+    source: null,
     styles: [
       { image: "/showcase/cases/case-01/style-01.jpg", label: { en: "Soft layers", zh: "柔和层次" } },
       { image: "/showcase/cases/case-01/style-02.jpg", label: { en: "Natural waves", zh: "自然微卷" } },
@@ -18,6 +19,7 @@ const cases = [
   {
     title: { en: "From sharp to relaxed", zh: "从利落到松弛" },
     note: { en: "Short hair · three distinct silhouettes", zh: "短发 · 三种清晰轮廓" },
+    source: "/showcase/sources/man-01.jpg",
     styles: [
       { image: "/showcase/cases/case-02/style-01.jpg", label: { en: "Textured crop", zh: "纹理短碎" } },
       { image: "/showcase/cases/case-02/style-02.jpg", label: { en: "Natural side", zh: "自然侧分" } },
@@ -27,6 +29,7 @@ const cases = [
   {
     title: { en: "Medium-length options", zh: "中长发方向" },
     note: { en: "Medium hair · texture and length compared", zh: "中发 · 比较纹理与长度" },
+    source: "/showcase/sources/man-02.jpg",
     styles: [
       { image: "/showcase/cases/case-03/style-01.jpg", label: { en: "Soft waves", zh: "柔和微卷" } },
       { image: "/showcase/cases/case-03/style-02.jpg", label: { en: "Neutral shag", zh: "自然碎层" } },
@@ -36,6 +39,7 @@ const cases = [
   {
     title: { en: "Three short-cut moods", zh: "三种短发气质" },
     note: { en: "Short hair · shape changes the expression", zh: "短发 · 轮廓改变整体气质" },
+    source: "/showcase/sources/woman-02.jpg",
     styles: [
       { image: "/showcase/cases/case-04/style-01.jpg", label: { en: "French bob", zh: "法式波波" } },
       { image: "/showcase/cases/case-04/style-02.jpg", label: { en: "Soft side", zh: "柔和侧分" } },
@@ -70,7 +74,7 @@ const feedback = [
 
 export function HomeShowcase({ locale }: { locale: Locale }) {
   const language = locale === "zh-CN" ? "zh" : "en";
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(1);
   const activeCase = cases[activeIndex];
   const showCase = (index: number) => setActiveIndex((index + cases.length) % cases.length);
 
@@ -83,8 +87,8 @@ export function HomeShowcase({ locale }: { locale: Locale }) {
         </div>
         <p>
           {language === "en"
-            ? "Switch between four people, then compare each person across three realistic options."
-            : "切换查看四位不同人物，并比较每个人的三种真实发型方案。"}
+            ? "Compare the source photo with three realistic hairstyle directions."
+            : "先看原始照片，再比较三种贴近现实的发型方向。"}
         </p>
       </div>
 
@@ -95,6 +99,32 @@ export function HomeShowcase({ locale }: { locale: Locale }) {
         </div>
         <p>{activeCase.note[language]}</p>
       </div>
+
+      {activeCase.source && (
+        <div className="showcase-source-row">
+          <figure className="showcase-source-card">
+            <div className="showcase-source-image">
+              <Image
+                src={activeCase.source}
+                alt={language === "en" ? "Original source photo" : "原始照片"}
+                fill
+                priority={activeIndex === 1}
+                sizes="(max-width: 680px) 28vw, 180px"
+                className="object-cover object-center"
+              />
+            </div>
+            <figcaption>{language === "en" ? "Original photo" : "原始照片"}</figcaption>
+          </figure>
+          <div className="showcase-source-copy">
+            <span>{language === "en" ? "Reference kept visible" : "保留原始参照"}</span>
+            <p>
+              {language === "en"
+                ? "The three directions below keep the same person as the reference, so the change in length and shape is easier to judge."
+                : "下面三种方向与原始照片保持同一人物，方便判断发长和轮廓到底改变了什么。"}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="showcase-triptych">
         {activeCase.styles.map((style, index) => (

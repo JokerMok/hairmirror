@@ -1,5 +1,4 @@
 import { StudioWizard } from "@/components/studio-wizard";
-import { RoleEntry } from "@/components/role-entry";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE, getUserByToken } from "@/lib/auth";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
@@ -32,7 +31,6 @@ export default async function Home() {
           ],
         }}
       />
-      <RoleEntry locale={locale} />
       <StudioWizard locale={locale} authenticated={authenticated} />
     </>
   );
