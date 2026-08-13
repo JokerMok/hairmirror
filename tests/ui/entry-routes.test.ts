@@ -20,8 +20,6 @@ describe("entry routes", () => {
     expect(salonStartPath("personal")).toBe("/consumer");
     expect(salonStartPath("store_owner")).toBe(STYLIST_CONSULTATION_PATH);
     expect(salonStartPath("staff")).toBe(STYLIST_CONSULTATION_PATH);
-    expect(salonStartPath(null)).toBe(
-      "/login?next=%2Fsalon%2Fconsultations%2Fnew",
-    );
+    expect(salonStartPath(null)).toBe(STYLIST_CONSULTATION_PATH);
   });
 });

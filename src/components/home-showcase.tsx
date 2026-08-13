@@ -5,17 +5,7 @@ import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { Locale } from "@/lib/i18n";
 
-const cases = [
-  {
-    title: { en: "Soft, wearable length", zh: "柔和日常长发" },
-    note: { en: "Long hair · three levels of movement", zh: "长发 · 三种不同动感" },
-    source: null,
-    styles: [
-      { image: "/showcase/cases/case-01/style-01.jpg", label: { en: "Soft layers", zh: "柔和层次" } },
-      { image: "/showcase/cases/case-01/style-02.jpg", label: { en: "Natural waves", zh: "自然微卷" } },
-      { image: "/showcase/cases/case-01/style-03.jpg", label: { en: "Airy volume", zh: "轻盈蓬松" } },
-    ],
-  },
+export const SHOWCASE_CASES = [
   {
     title: { en: "From sharp to relaxed", zh: "从利落到松弛" },
     note: { en: "Short hair · three distinct silhouettes", zh: "短发 · 三种清晰轮廓" },
@@ -74,21 +64,21 @@ const feedback = [
 
 export function HomeShowcase({ locale }: { locale: Locale }) {
   const language = locale === "zh-CN" ? "zh" : "en";
-  const [activeIndex, setActiveIndex] = useState(1);
-  const activeCase = cases[activeIndex];
-  const showCase = (index: number) => setActiveIndex((index + cases.length) % cases.length);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeCase = SHOWCASE_CASES[activeIndex];
+  const showCase = (index: number) => setActiveIndex((index + SHOWCASE_CASES.length) % SHOWCASE_CASES.length);
 
   return (
     <section className="showcase-shell" aria-label={language === "en" ? "Hairstyle comparison cases" : "发型对比案例"}>
       <div className="showcase-heading">
         <div>
-          <p className="eyebrow">{language === "en" ? "Four comparison cases" : "四组对比案例"}</p>
-          <h2>{language === "en" ? "One person. Three hairstyle directions." : "同一个人，三种发型方向"}</h2>
+          <p className="eyebrow">{language === "en" ? "Three source-backed comparison cases" : "三组有原图依据的对比案例"}</p>
+          <h2>{language === "en" ? "One reference. Three hairstyle directions." : "一张原图，三种发型方向"}</h2>
         </div>
         <p>
           {language === "en"
-            ? "Compare the source photo with three realistic hairstyle directions."
-            : "先看原始照片，再比较三种贴近现实的发型方向。"}
+            ? "Compare each original reference with three realistic hairstyle directions."
+            : "每组都先看原始照片，再比较三种贴近现实的发型方向。"}
         </p>
       </div>
 
@@ -108,7 +98,8 @@ export function HomeShowcase({ locale }: { locale: Locale }) {
                 src={activeCase.source}
                 alt={language === "en" ? "Original source photo" : "原始照片"}
                 fill
-                priority={activeIndex === 1}
+                priority={activeIndex === 0}
+                unoptimized
                 sizes="(max-width: 680px) 28vw, 180px"
                 className="object-cover object-center"
               />
@@ -119,8 +110,8 @@ export function HomeShowcase({ locale }: { locale: Locale }) {
             <span>{language === "en" ? "Reference kept visible" : "保留原始参照"}</span>
             <p>
               {language === "en"
-                ? "The three directions below keep the same person as the reference, so the change in length and shape is easier to judge."
-                : "下面三种方向与原始照片保持同一人物，方便判断发长和轮廓到底改变了什么。"}
+                ? "The original reference stays visible so you can compare the starting point, framing, and facial features yourself."
+                : "原始参照会一直保留，方便你自行比较起点、构图和面部特征。"}
             </p>
           </div>
         </div>
@@ -135,6 +126,7 @@ export function HomeShowcase({ locale }: { locale: Locale }) {
                 alt={`${style.label[language]} — ${language === "en" ? `case ${activeIndex + 1}` : `案例 ${activeIndex + 1}`}`}
                 fill
                 priority={activeIndex === 0}
+                unoptimized
                 sizes="(max-width: 680px) 33vw, 390px"
                 className="object-cover object-center"
               />
@@ -150,7 +142,7 @@ export function HomeShowcase({ locale }: { locale: Locale }) {
           <ChevronLeft size={19} />
         </button>
         <div className="showcase-tabs" role="tablist" aria-label={language === "en" ? "Choose a comparison case" : "选择对比案例"}>
-          {cases.map((item, index) => (
+          {SHOWCASE_CASES.map((item, index) => (
             <button
               key={item.title.en}
               type="button"

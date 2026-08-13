@@ -33,6 +33,11 @@ export interface DesignPreferences {
   dailyMinutes: number;
 }
 
+export type ConsultationBrief = Pick<
+  DesignPreferences,
+  "currentLength" | "targetLength" | "goal" | "chemical" | "dailyMinutes"
+>;
+
 export const DEFAULT_DESIGN_PREFERENCES: DesignPreferences = {
   audience: "neutral",
   currentLength: "short",

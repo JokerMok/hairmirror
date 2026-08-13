@@ -16,12 +16,12 @@ export default async function RefundPolicyPage() {
     ? [
         { t: "当前阶段", b: "HairMirror 当前处于免费试用与工作流验证阶段，不要求付款，也没有启用中的个人次数包或门店订阅，因此目前不存在需要申请的付费退款。" },
         { t: "未来付费服务", b: "如果未来启用付费服务，我们会在付款前公布价格、服务范围、取消和退款规则，并同步更新服务条款与本政策。" },
-        { t: "试用反馈", b: "如果生成失败、照片需要删除或你发现了其他问题，请通过运营方公布的支持渠道联系我们。" },
+        { t: "试用反馈", b: "如果生成失败、照片需要删除或你发现了其他问题，支持邮箱将在邀请外部试用前配置并公布。" },
       ]
     : [
         { t: "Current pilot", b: "HairMirror is currently a free pilot. No payment is required and no personal pack or salon subscription is active, so there are no paid refunds to request during this phase." },
         { t: "Future paid services", b: "If paid services launch, we will publish the price, scope, cancellation, and refund rules before checkout and update the Terms of Service and this policy." },
-        { t: "Pilot support", b: "If a generation fails, you want a source photo deleted, or you find another issue, use the operator's published support channel to contact us." },
+        { t: "Pilot support", b: "If a generation fails, you want a source photo deleted, or you find another issue, a support email will be configured and published before external pilot invitations." },
       ];
 
   return (

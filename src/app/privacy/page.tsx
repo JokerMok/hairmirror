@@ -28,11 +28,11 @@ export default async function PrivacyPage() {
         },
         {
           t: "四、保存与删除",
-          b: "原照片在成功或取消后立即删除，连续失败时最多保留 24 小时。生成结果、方案、选择和反馈默认保留 30 天。你可以提前删除；不含照片的交易、费用和安全记录可按法律及财务要求继续保存。",
+          b: "原照片在成功或取消后立即删除，连续失败时最多保留 24 小时。生成结果、方案、选择和反馈默认保留 30 天。你可以提前删除；不含照片的账号、安全和必要审计记录，可按适用法律及安全要求继续保存。",
         },
         {
           t: "五、你的权利",
-          b: "你可以访问或删除生成记录，并通过运营方公布的支持渠道申请访问、更正或删除账号资料。美国部分州的居民还可依法提出隐私权请求。若未来启用付费功能，我们会在付款前更新相关说明。",
+          b: "你可以访问或删除生成记录。支持邮箱将在邀请外部试用前配置并公布；美国部分州的居民还可依法提出隐私权请求。若未来启用付费功能，我们会在付款前更新相关说明。",
         },
       ]
     : [
@@ -50,11 +50,11 @@ export default async function PrivacyPage() {
         },
         {
           t: "4. Retention and deletion",
-          b: "Source photos are deleted immediately after successful generation or cancellation and retained for no more than 24 hours after repeated failure. Results, options, selections, and feedback are retained for 30 days by default. You may delete them sooner. Transaction, cost, fraud-prevention, and security records that contain no photos may be retained as required by law and accounting rules.",
+          b: "Source photos are deleted immediately after successful generation or cancellation and retained for no more than 24 hours after repeated failure. Results, options, selections, and feedback are retained for 30 days by default. You may delete them sooner. Account, security, and necessary audit records that contain no photos may be retained as required by applicable law and security requirements.",
         },
         {
           t: "5. Your choices and rights",
-          b: "You can access or delete generation records and use the operator's published support channel to request access, correction, or deletion of account data. If paid features are introduced, this policy will be updated before payment is requested. Residents of certain US states may have additional privacy rights under applicable law.",
+          b: "You can access or delete generation records. A support email will be configured and published before external pilot invitations. If paid features are introduced, this policy will be updated before payment is requested. Residents of certain US states may have additional privacy rights under applicable law.",
         },
       ];
   return (

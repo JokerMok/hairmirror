@@ -25,6 +25,11 @@ import type {
   HairLength,
 } from "@/lib/types";
 import { DEFAULT_DESIGN_PREFERENCES } from "@/lib/types";
+import {
+  clearStudioDraft,
+  loadStudioDraft,
+  saveStudioDraft,
+} from "@/lib/consultation-draft";
 
 const initial: DesignPreferences = DEFAULT_DESIGN_PREFERENCES;
 export function StudioWizard({
@@ -164,6 +169,19 @@ export function StudioWizard({
       .then((data) => setRecentTasks(data.tasks ?? []))
       .catch(() => setRecentTasks([]));
   }, []);
+  useEffect(() => {
+    let cancelled = false;
+    loadStudioDraft().then((draft) => {
+      if (cancelled || !draft) return;
+      setPreview(draft.photo);
+      setConsent(draft.consent);
+      setPreferences(draft.preferences);
+      setStep(draft.step);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const activeTaskId = task?.id;
   const activeTaskStatus = task?.status;
   useEffect(() => {
@@ -231,9 +249,18 @@ export function StudioWizard({
         const failure = await response
           .json()
           .catch(() => ({ error: "UNKNOWN" }));
+        if (failure.error === "AUTH_REQUIRED") {
+          await saveStudioDraft({
+            photo: preview,
+            consent,
+            preferences,
+            step: 2,
+          });
+        }
         throw new Error(failure.error);
       }
       const data = await response.json();
+      clearStudioDraft();
       setTask(data.task);
       setRecentTasks((items) =>
         [data.task, ...items.filter((item) => item.id !== data.task.id)].slice(
@@ -252,8 +279,8 @@ export function StudioWizard({
       setError(
         code === "AUTH_REQUIRED"
           ? t(
-              "Sign in to receive your free complete preview.",
-              "登录后可获得 1 次免费完整体验。",
+              "Sign in to continue. Your photo and conditions are saved only in this browser for the next step.",
+              "请先登录继续。照片和条件仅保存在当前浏览器中，登录后会恢复。",
             )
           : code === "PAYMENT_REQUIRED"
           ? t(
@@ -288,6 +315,7 @@ export function StudioWizard({
     setPreview("");
     setSelected("");
     setStep(0);
+    clearStudioDraft();
   }
   function resetAll() {
     setTask(null);
@@ -300,6 +328,7 @@ export function StudioWizard({
     setPreferences(initial);
     setStep(0);
     setError("");
+    clearStudioDraft();
   }
   async function chooseVariant(variantId: string) {
     setSelected(variantId);
@@ -882,7 +911,7 @@ export function StudioWizard({
                 {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
                 {errorAction && (
                   <Link
-                    href="/login?next=%2F%23studio"
+                    href="/login?next=%2F%3Fresume%3D1%23studio"
                     className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--brand)] underline"
                   >
                     {t("Sign in or create an account", "登录或创建账号")}

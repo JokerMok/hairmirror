@@ -22,6 +22,7 @@ import {
   requestConsultationRecommendationCancellation,
   retryConsultationRecommendation,
 } from "@/lib/generation-queue";
+import type { ConsultationBrief, HairGoal, HairLength } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -73,6 +74,20 @@ function responseFor(id: string, actor: ReturnType<typeof actorForUser>) {
   };
 }
 
+function readConsultationBrief(value: unknown): ConsultationBrief | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const brief = value as Record<string, unknown>;
+  const lengths: HairLength[] = ["short", "medium", "long"];
+  const goals: HairGoal[] = ["fresh", "younger", "volume", "professional", "fashion"];
+  const currentLength = lengths.includes(brief.currentLength as HairLength) ? brief.currentLength as HairLength : "medium";
+  const targetLength = lengths.includes(brief.targetLength as HairLength) ? brief.targetLength as HairLength : "medium";
+  const goal = goals.includes(brief.goal as HairGoal) ? brief.goal as HairGoal : "fresh";
+  const dailyMinutes = typeof brief.dailyMinutes === "number" && Number.isFinite(brief.dailyMinutes)
+    ? Math.max(0, Math.min(30, Math.round(brief.dailyMinutes / 5) * 5))
+    : 10;
+  return { currentLength, targetLength, goal, dailyMinutes, chemical: brief.chemical === true };
+}
+
 function scheduleInlineWorker() {
   if (process.env.DISABLE_INLINE_WORKER === "1") return;
   after(async () => {
@@ -119,6 +134,7 @@ export async function PATCH(
       await analyze(item, {
         imageId: typeof body.imageId === "string" ? body.imageId : undefined,
         role: actor.role === "consumer" ? "consumer" : "stylist",
+        brief: readConsultationBrief(body.brief),
       });
     } else if (action === "generate") {
       enqueueConsultationGeneration(item, user);

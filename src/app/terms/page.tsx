@@ -20,7 +20,7 @@ export default async function TermsPage() {
         },
         {
           t: "2. 账号与使用",
-          b: "你应提供真实、合法的账号信息，并妥善保管登录凭据。不得上传未获授权的照片，不得绕过额度、费用或安全限制。",
+          b: "你应提供真实、合法的账号信息，并妥善保管登录凭据。不得上传未获授权的照片，不得绕过使用范围、生成限制或安全限制。",
         },
         {
           t: "3. 免费试用阶段",
@@ -42,7 +42,7 @@ export default async function TermsPage() {
         },
         {
           t: "2. Accounts and use",
-          b: "Provide accurate account information and protect your credentials. Do not upload photos without permission or bypass usage, billing, or security controls.",
+          b: "Provide accurate account information and protect your credentials. Do not upload photos without permission or bypass usage scope, generation limits, or security controls.",
         },
         {
           t: "3. Free pilot",

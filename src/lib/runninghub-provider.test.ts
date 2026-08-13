@@ -84,6 +84,9 @@ describe("RunningHub adapter", () => {
     expect(prompts[0]).toContain("原生发质直发");
     expect(prompts[0]).toContain("发量与粗细中等");
     expect(prompts[0]).toContain("只能通过剪发和日常造型实现");
+    expect(prompts[0]).toContain("原图人物必须像素级保持同一身份");
+    expect(prompts[0]).toContain("禁止美颜、磨皮、瘦脸、放大眼睛、改变妆容、年龄、性别或种族");
+    expect(prompts[0]).toContain("背景、曝光和光线不得变化");
   });
 
   it("cleans partial outputs and reports known provider cost when one variant fails", async () => {

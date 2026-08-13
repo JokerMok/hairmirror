@@ -6,11 +6,13 @@ import {
   type ConsultationReason,
   type ConsultationReport,
 } from "@/lib/ai-consultation-schema";
+import type { ConsultationBrief } from "@/lib/types";
 
 export interface ConsultationInput {
   imageId?: string;
   imageDataUrl?: string;
   role?: "consumer" | "stylist";
+  brief?: ConsultationBrief;
 }
 
 export interface ConsultationProvider {

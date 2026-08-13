@@ -11,5 +11,5 @@ export function salonStartPath(
   if (role === "store_owner" || role === "staff") {
     return STYLIST_CONSULTATION_PATH;
   }
-  return loginPath(STYLIST_CONSULTATION_PATH);
+  return STYLIST_CONSULTATION_PATH;
 }

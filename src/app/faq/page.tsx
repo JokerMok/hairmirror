@@ -18,7 +18,7 @@ const ENGLISH_FAQ = [
   {
     question: "How does the AI hairstyle preview work?",
     answer:
-      "Upload a clear front-facing photo, choose your preferences, and HairMirror creates three hairstyle directions for side-by-side comparison. Each complete preview uses one credit.",
+      "Upload a clear front-facing photo, choose your preferences, and HairMirror creates three hairstyle directions for side-by-side comparison during the free pilot.",
   },
   {
     question: "Is the first hairstyle preview free?",
@@ -28,7 +28,7 @@ const ENGLISH_FAQ = [
   {
     question: "What does the free pilot mean?",
     answer:
-      "We are validating whether the consultation workflow helps customers and stylists make decisions faster. Paid plans, packs, and salon billing are not active yet; any future change will be announced before payment is requested.",
+      "We are validating whether the consultation workflow helps customers and stylists make decisions faster. Paid plans and subscriptions are not active yet; any future change will be announced before payment is requested.",
   },
   {
     question: "How can a stylist use HairMirror with a client?",
@@ -54,7 +54,7 @@ export default async function FaqPage() {
     ? [
         { question: "AI 发型预览是怎样生成的？", answer: "上传清晰的正面照片并选择偏好后，发型镜会生成三个发型方向，供你并排比较。当前免费试用阶段不需要购买次数。" },
         { question: "第一次发型预览免费吗？", answer: "免费。HairMirror 目前处于免费试用阶段，登录后可以创建一次咨询并获得三个发型方向，当前无需付款。" },
-        { question: "免费试用阶段是什么意思？", answer: "我们正在验证这套咨询流程是否能帮助客户和发型师更快确定方向。付费次数包、门店订阅和账单功能暂未启用；未来如有变化，会在要求付款前提前说明。" },
+        { question: "免费试用阶段是什么意思？", answer: "我们正在验证这套咨询流程是否能帮助客户和发型师更快确定方向。付费方案和订阅暂未启用；未来如有变化，会在要求付款前提前说明。" },
         { question: "发型师如何和客户一起使用？", answer: "发型师可以为客户创建咨询，记录发长、打理时间等实际条件，比较三个方向，保存一个选择，并把最终沟通卡发给客户或团队。" },
         { question: "上传照片如何保护？", answer: "原照片在成功生成或取消后删除；连续失败时最多保留 24 小时。生成结果及相关选择默认保留 30 天，也可提前删除。" },
         { question: "实际剪发会和 AI 预览完全一样吗？", answer: "不一定。发型镜用于方案规划和沟通。实际效果还会受到发质、发量、当前长度、造型方式和发型师技术影响，请与专业发型师确认最终方案。" },

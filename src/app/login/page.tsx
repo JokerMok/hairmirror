@@ -14,14 +14,19 @@ export default function LoginPage() {
     () => (document.cookie.includes("hair_locale=zh-CN") ? "zh-CN" : "en"),
     () => "en",
   ) as Locale;
+  const requestedNext = useSyncExternalStore(
+    () => () => {},
+    () => window.location.search,
+    () => "",
+  );
   const zh = locale === "zh-CN";
   const t = (en: string, cn: string) => (zh ? cn : en);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [accountType, setAccountType] = useState<"personal" | "store_owner">(
-    "personal",
-  );
+  const [accountTypeOverride, setAccountTypeOverride] = useState<"personal" | "store_owner" | null>(null);
+  const stylistEntry = new URLSearchParams(requestedNext).get("next")?.startsWith("/salon/consultations") ?? false;
+  const accountType = accountTypeOverride ?? (stylistEntry ? "store_owner" : "personal");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -68,7 +73,7 @@ export default function LoginPage() {
         </header>
         <div className="mx-auto mt-8 grid max-w-5xl overflow-hidden rounded-[2rem] border border-[var(--line)] bg-white shadow-[var(--shadow-md)] lg:grid-cols-[1.05fr_.95fr]">
           <aside className="relative hidden min-h-[720px] overflow-hidden bg-[var(--surface-dark)] text-white lg:block">
-            <Image src="/showcase/curly-youth.jpg" alt="Curly hairstyle inspiration" fill priority sizes="(min-width: 1024px) 520px, 1px" className="object-cover opacity-55" />
+            <Image src="/showcase/curly-youth.jpg" alt="Curly hairstyle inspiration" fill unoptimized priority sizes="(min-width: 1024px) 520px, 1px" className="object-cover opacity-55" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#102b25] via-[#102b25]/45 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-10">
               <p className="eyebrow !text-[#b9dfd3]">HairMirror</p>
@@ -91,12 +96,12 @@ export default function LoginPage() {
           <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">
             {mode === "login"
               ? t(
-                  "Access your hairstyle history and billing.",
-                  "查看你的发型记录和账单。 ",
+                  "Access your hairstyle history and consultation cards.",
+                  "查看你的发型记录和沟通卡。",
                 )
               : t(
-                  "Register with your email and get one complete preview free.",
-                  "使用邮箱注册，获得 1 次免费完整体验。",
+                  "Register with your email and start a consultation during the free pilot.",
+                  "使用邮箱注册，在免费试用阶段开始一次咨询。",
                 )}
           </p>
           <form onSubmit={submit} className="mt-7 grid gap-4">
@@ -120,14 +125,14 @@ export default function LoginPage() {
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setAccountType("personal")}
+                      onClick={() => setAccountTypeOverride("personal")}
                     className={`min-h-12 rounded-xl border px-3 py-3 text-sm ${accountType === "personal" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]" : "border-[var(--line)] hover:border-[#aeb9b4]"}`}
                     >
                       {t("Personal", "个人用户")}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAccountType("store_owner")}
+                      onClick={() => setAccountTypeOverride("store_owner")}
                       className={`min-h-12 rounded-xl border px-3 py-3 text-sm ${accountType === "store_owner" ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]" : "border-[var(--line)] hover:border-[#aeb9b4]"}`}
                     >
                       {t("Salon owner", "门店管理员")}

@@ -57,10 +57,10 @@ export default async function SalonPage() {
             {t("Create a lightweight consultation for a client, compare three directions, and leave with instructions your team can act on.", "为客户创建一份轻量咨询，比较三种发型方向，并留下团队可以执行的建议。")}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href={startHref} className="button-primary min-h-11 bg-[#e9b663] !text-[#15342d] hover:bg-[#f2c77e]">
+            <Link href={startHref} className="button-primary min-h-11 bg-[#e9b663] !text-[#102b25] hover:bg-[#f2c77e]">
               {startLabel} <ArrowRight size={16} />
             </Link>
-            <Link href="/#examples" className="button-secondary min-h-11 border-white/20 bg-white/10 !text-white hover:bg-white/15">
+            <Link href="/#examples" className="button-secondary min-h-11 border-white bg-white !text-[#173b33] hover:bg-[#f4f8f5]">
               {t("View examples", "查看案例")}
             </Link>
           </div>
@@ -94,7 +94,7 @@ export default async function SalonPage() {
           <article className="mt-6 grid overflow-hidden rounded-3xl border border-[var(--line)] bg-[#f8faf7] lg:grid-cols-[.8fr_1.2fr]">
             <div className="grid gap-3 p-5 sm:grid-cols-[140px_1fr] lg:grid-cols-1 lg:p-6">
               <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#e2e9e4]">
-                <Image src="/showcase/sources/man-02.jpg" alt={t("Example client source photo", "示例客户原始照片")} fill sizes="(max-width: 640px) 34vw, 140px" className="object-cover object-center" />
+                <Image src="/showcase/sources/man-02.jpg" alt={t("Example client source photo", "示例客户原始照片")} fill unoptimized sizes="(max-width: 640px) 34vw, 140px" className="object-cover object-center" />
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--brand)]">{t("Example client brief", "示例客户需求")}</p>
@@ -112,7 +112,7 @@ export default async function SalonPage() {
               <div className="mt-5 grid grid-cols-3 gap-2">
                 {["style-01.jpg", "style-02.jpg", "style-03.jpg"].map((file, index) => (
                   <div key={file} className={`relative aspect-[4/5] overflow-hidden rounded-xl ${index === 2 ? "ring-2 ring-[var(--brand)] ring-offset-2" : ""}`}>
-                    <Image src={`/showcase/cases/case-03/${file}`} alt={t(`Option ${index + 1}`, `方案 ${index + 1}`)} fill sizes="(max-width: 1024px) 30vw, 180px" className="object-cover object-center" />
+                    <Image src={`/showcase/cases/case-03/${file}`} alt={t(`Option ${index + 1}`, `方案 ${index + 1}`)} fill unoptimized sizes="(max-width: 1024px) 30vw, 180px" className="object-cover object-center" />
                   </div>
                 ))}
               </div>

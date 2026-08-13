@@ -7,12 +7,39 @@ import CommunicationCard from "@/components/communication-card";
 import { ProtectedResultImage } from "@/components/protected-result-image";
 import type { CommunicationCardResponse } from "@/lib/communication-card";
 import type {
+  ConsultationBrief,
   Consultation,
   ConsultationGenerationJob,
+  HairGoal,
+  HairLength,
   Recommendation,
 } from "@/lib/types";
+import { DEFAULT_DESIGN_PREFERENCES } from "@/lib/types";
+import { loginPath, STYLIST_CONSULTATION_PATH } from "@/lib/entry-routes";
+import {
+  clearSalonDraft,
+  loadSalonDraft,
+  saveSalonDraft,
+} from "@/lib/consultation-draft";
 
-type Props = { initialConsultationId?: string; mode?: "stylist" | "consumer" };
+type Props = { initialConsultationId?: string; mode?: "stylist" | "consumer"; authenticated?: boolean };
+
+const defaultBrief: ConsultationBrief = {
+  currentLength: DEFAULT_DESIGN_PREFERENCES.currentLength,
+  targetLength: "medium",
+  goal: "fresh",
+  dailyMinutes: 10,
+  chemical: false,
+};
+
+const lengthLabels: Record<HairLength, string> = { short: "Short", medium: "Medium", long: "Long" };
+const goalLabels: Record<HairGoal, string> = {
+  fresh: "Fresh and clean",
+  younger: "Look younger",
+  volume: "More volume",
+  professional: "Professional",
+  fashion: "Fashion-forward",
+};
 
 async function readJson(response: Response) {
   const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
@@ -45,7 +72,7 @@ function recommendationJob(
   return jobs.find((job) => job.recommendationId === recommendation.id);
 }
 
-export default function SalonConsultationFlow({ initialConsultationId, mode = "stylist" }: Props) {
+export default function SalonConsultationFlow({ initialConsultationId, mode = "stylist", authenticated = false }: Props) {
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,6 +82,7 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
   const [jobs, setJobs] = useState<ConsultationGenerationJob[]>([]);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [customerEmail, setCustomerEmail] = useState("");
+  const [brief, setBrief] = useState<ConsultationBrief>(defaultBrief);
 
   function applyPayload(payload: Record<string, unknown>) {
     const item = payload.consultation as Consultation;
@@ -64,18 +92,29 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
   }
 
   useEffect(() => {
-    if (!initialConsultationId) return;
+    if (initialConsultationId) {
+      let cancelled = false;
+      fetch(`/api/consultations/${encodeURIComponent(initialConsultationId)}`, { cache: "no-store" })
+        .then(readJson)
+        .then((payload) => {
+          if (!cancelled) applyPayload(payload);
+        })
+        .catch((reason: unknown) => {
+          if (!cancelled) setError(readableError(reason));
+        });
+      return () => { cancelled = true; };
+    }
+    if (!authenticated) return;
     let cancelled = false;
-    fetch(`/api/consultations/${encodeURIComponent(initialConsultationId)}`, { cache: "no-store" })
-      .then(readJson)
-      .then((payload) => {
-        if (!cancelled) applyPayload(payload);
-      })
-      .catch((reason: unknown) => {
-        if (!cancelled) setError(readableError(reason));
-      });
+    loadSalonDraft().then((draft) => {
+      if (cancelled || !draft) return;
+      setPhoto(draft.photo);
+      setConsentAccepted(draft.consentAccepted);
+      setCustomerEmail(draft.customerEmail);
+      setBrief(draft.brief ?? defaultBrief);
+    });
     return () => { cancelled = true; };
-  }, [initialConsultationId]);
+  }, [authenticated, initialConsultationId]);
 
   useEffect(() => {
     const consultationId = consultation?.id;
@@ -149,6 +188,16 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
     if (!photo) return;
     setBusy(true);
     setError(null);
+    if (!authenticated) {
+      try {
+        await saveSalonDraft({ photo, consentAccepted, customerEmail, brief });
+        window.location.assign(loginPath(`${STYLIST_CONSULTATION_PATH}?resume=1`));
+      } catch {
+        setError("This browser could not save the draft. Keep this page open and try again.");
+        setBusy(false);
+      }
+      return;
+    }
     try {
       const idempotencyKey = crypto.randomUUID();
       const created = await readJson(await fetch("/api/consultations", {
@@ -160,7 +209,7 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
       const analyzed = await readJson(await fetch(`/api/consultations/${draft.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "analyze" }),
+        body: JSON.stringify({ action: "analyze", brief }),
       }));
       applyPayload(analyzed);
       const generated = await readJson(await fetch(`/api/consultations/${draft.id}`, {
@@ -169,6 +218,7 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
         body: JSON.stringify({ action: "generate" }),
       }));
       applyPayload(generated);
+      clearSalonDraft();
     } catch (reason) {
       setError(readableError(reason));
     } finally {
@@ -261,9 +311,36 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
             {photo ? <Image src={photo} alt="Client source preview" width={640} height={800} unoptimized className="max-h-72 max-w-full rounded-xl object-contain" /> : <><span className="text-lg font-medium text-slate-900">Upload a clear front-facing photo</span><span className="mt-2 text-sm text-slate-500">JPG, PNG or WebP · up to 8 MB</span></>}
             <input id="consultation-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={onFileChange} className="sr-only" />
           </label>
-          {mode === "stylist" && <input value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder="Optional customer email to attach this record" type="email" className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-emerald-500 focus:ring-2" />}
+          {mode === "stylist" && <>
+            <input value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder="Optional customer email to attach this record" type="email" className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-emerald-500 focus:ring-2" />
+            <fieldset className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <legend className="px-1 text-sm font-semibold text-slate-900">Client brief</legend>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-slate-700">Current length
+                  <select value={brief.currentLength} onChange={(event) => setBrief({ ...brief, currentLength: event.target.value as HairLength })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                    {(Object.keys(lengthLabels) as HairLength[]).map((value) => <option key={value} value={value}>{lengthLabels[value]}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm text-slate-700">Target length
+                  <select value={brief.targetLength} onChange={(event) => setBrief({ ...brief, targetLength: event.target.value as HairLength })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                    {(Object.keys(lengthLabels) as HairLength[]).map((value) => <option key={value} value={value}>{lengthLabels[value]}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm text-slate-700">Main goal
+                  <select value={brief.goal} onChange={(event) => setBrief({ ...brief, goal: event.target.value as HairGoal })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                    {(Object.keys(goalLabels) as HairGoal[]).map((value) => <option key={value} value={value}>{goalLabels[value]}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm text-slate-700">Daily styling: {brief.dailyMinutes} min
+                  <input aria-label="Daily styling time" type="range" min="0" max="30" step="5" value={brief.dailyMinutes} onChange={(event) => setBrief({ ...brief, dailyMinutes: Number(event.target.value) })} className="mt-3 w-full accent-emerald-700" />
+                </label>
+              </div>
+              <label className="mt-3 flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={brief.chemical} onChange={(event) => setBrief({ ...brief, chemical: event.target.checked })} className="mt-1 size-4 accent-emerald-700" />Client is open to perm or colour.</label>
+            </fieldset>
+          </>}
           {!initialConsultationId && <label className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-3 text-sm leading-5 text-amber-950"><input type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} className="mt-1 size-4 accent-emerald-700" /><span>{mode === "stylist" ? "I confirm the client agreed to use this clear, front-facing photo of one person for hairstyle analysis. The photo is not used for model training." : "I agree to use this clear, front-facing photo of one person for hairstyle analysis. The photo is not used for model training and can be deleted with this consultation."}</span></label>}
-          <button type="button" onClick={createAndAnalyze} disabled={!photo || busy || Boolean(initialConsultationId) || !consentAccepted} className="mt-5 w-full rounded-xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300">{busy ? "Working…" : initialConsultationId ? "Saved consultation" : "Analyze and generate previews"}</button>
+          {!authenticated && !initialConsultationId && <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm leading-5 text-emerald-900">Your photo and brief stay in this browser until you sign in. Nothing is uploaded before that step.</p>}
+          <button type="button" onClick={createAndAnalyze} disabled={!photo || busy || Boolean(initialConsultationId) || !consentAccepted} className="mt-5 w-full rounded-xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300">{busy ? "Working…" : initialConsultationId ? "Saved consultation" : authenticated ? "Analyze and generate previews" : "Sign in to generate previews"}</button>
           {consultation?.analysisResult && jobs.length === 0 && <button type="button" onClick={generatePreviews} disabled={busy} className="mt-3 w-full rounded-xl border border-emerald-700 px-4 py-3 font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60">Generate previews</button>}
           {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
         </div>

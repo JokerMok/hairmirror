@@ -76,15 +76,17 @@ export async function analyze(item: Consultation, input: ConsultationInput = {})
     }
     const fallbackProvider = { analyze: async () => { throw new Error("CONSULTATION_PROVIDER_NOT_CONFIGURED"); } };
     if (provider && !item.sourcePhotoPath) throw new Error("SOURCE_IMAGE_REQUIRED");
+    const { brief, ...modelInput } = input;
     const providerInput = provider
-      ? consultationInputWithSourceImage(item, input)
-      : input;
+      ? consultationInputWithSourceImage(item, modelInput)
+      : modelInput;
     const result = await runConsultation(provider ?? fallbackProvider, providerInput, {
       timeoutMs: configuredConsultationTimeoutMs(),
     });
     const report = result.report;
     const analysis = {
       ...report.analysis,
+      consultationBrief: brief ?? null,
       status: report.status,
       source: result.source,
       explanation: report.explanation ?? null,
