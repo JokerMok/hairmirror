@@ -144,7 +144,7 @@ input:not([type="checkbox"]):not([type="range"]):focus, select:focus, textarea:f
 .showcase-arrow { display: inline-flex; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 999px; color: var(--foreground); transition: border-color .18s ease, background .18s ease, transform .18s ease; }
 .showcase-arrow:hover { border-color: #aeb9b4; background: var(--surface-soft); }
 .showcase-arrow:active { transform: scale(.96); }
-.showcase-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.showcase-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
 .showcase-tabs button { min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 8px; border-radius: 12px; padding: 8px 11px; color: var(--text-muted); text-align: left; transition: background .18s ease, color .18s ease; }
 .showcase-tabs button:hover { background: var(--surface-soft); color: var(--foreground); }
 .showcase-tabs button.is-active { background: var(--brand-soft); color: var(--brand); }

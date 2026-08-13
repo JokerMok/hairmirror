@@ -7,6 +7,16 @@ import type { Locale } from "@/lib/i18n";
 
 export const SHOWCASE_CASES = [
   {
+    title: { en: "Long-hair directions", zh: "长发方向" },
+    note: { en: "Long hair · three levels of movement", zh: "长发 · 三种层次变化" },
+    source: "/showcase/sources/woman-01.jpg",
+    styles: [
+      { image: "/showcase/cases/case-01/style-01.jpg", label: { en: "Soft waves", zh: "柔和大波浪" } },
+      { image: "/showcase/cases/case-01/style-02.jpg", label: { en: "Long layers", zh: "轻盈长层次" } },
+      { image: "/showcase/cases/case-01/style-03.jpg", label: { en: "Curtain fringe", zh: "八字刘海" } },
+    ],
+  },
+  {
     title: { en: "From sharp to relaxed", zh: "从利落到松弛" },
     note: { en: "Short hair · three distinct silhouettes", zh: "短发 · 三种清晰轮廓" },
     source: "/showcase/sources/man-01.jpg",
@@ -72,7 +82,7 @@ export function HomeShowcase({ locale }: { locale: Locale }) {
     <section className="showcase-shell" aria-label={language === "en" ? "Hairstyle comparison cases" : "发型对比案例"}>
       <div className="showcase-heading">
         <div>
-          <p className="eyebrow">{language === "en" ? "Three source-backed comparison cases" : "三组有原图依据的对比案例"}</p>
+          <p className="eyebrow">{language === "en" ? "Four source-backed comparison cases" : "四组有原图依据的对比案例"}</p>
           <h2>{language === "en" ? "One reference. Three hairstyle directions." : "一张原图，三种发型方向"}</h2>
         </div>
         <p>
