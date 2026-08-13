@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "build:sites": "node scripts/build-sites-package.mjs",
     "start": "next start",
     "start:production": "node scripts/start-production.mjs",
     "worker": "node scripts/worker.mjs",
