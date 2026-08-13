@@ -10,6 +10,8 @@ describe("model secret vault", () => {
   });
   it("rejects tampered payloads", () => {
     const encrypted = encryptSecret("secret");
-    expect(() => decryptSecret(`${encrypted.slice(0, -1)}x`)).toThrow();
+    const parts = encrypted.split(".");
+    parts[2] = `${parts[2][0] === "a" ? "b" : "a"}${parts[2].slice(1)}`;
+    expect(() => decryptSecret(parts.join("."))).toThrow();
   });
 });
