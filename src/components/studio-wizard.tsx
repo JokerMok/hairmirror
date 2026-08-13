@@ -29,10 +29,8 @@ import { DEFAULT_DESIGN_PREFERENCES } from "@/lib/types";
 const initial: DesignPreferences = DEFAULT_DESIGN_PREFERENCES;
 export function StudioWizard({
   locale,
-  authenticated,
 }: {
   locale: Locale;
-  authenticated: boolean;
 }) {
   const isZh = locale === "zh-CN";
   const t = (en: string, zh: string) => (isZh ? zh : en);
@@ -157,10 +155,6 @@ export function StudioWizard({
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openPhotoPicker() {
-    if (!authenticated) {
-      window.location.assign("/login?next=%2F%23studio");
-      return;
-    }
     inputRef.current?.click();
   }
 

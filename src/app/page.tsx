@@ -1,6 +1,5 @@
 import { StudioWizard } from "@/components/studio-wizard";
 import { cookies } from "next/headers";
-import { AUTH_COOKIE, getUserByToken } from "@/lib/auth";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { StructuredData } from "@/components/structured-data";
 import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
@@ -8,9 +7,6 @@ import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 export default async function Home() {
   const jar = await cookies();
   const locale = normalizeLocale(jar.get(LOCALE_COOKIE)?.value);
-  const authenticated = Boolean(
-    getUserByToken(jar.get(AUTH_COOKIE)?.value),
-  );
   return (
     <>
       <StructuredData
@@ -31,7 +27,7 @@ export default async function Home() {
           ],
         }}
       />
-      <StudioWizard locale={locale} authenticated={authenticated} />
+      <StudioWizard locale={locale} />
     </>
   );
 }
