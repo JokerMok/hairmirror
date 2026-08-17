@@ -26,6 +26,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RESET_NOT_CONFIGURED" }, { status: 503 });
 
   const reset = createPasswordResetToken(parsed.data.email);
-  if (reset) await sendPasswordResetEmail(reset.email, reset.token);
+  if (reset) {
+    try {
+      const sent = await sendPasswordResetEmail(reset.email, reset.token);
+      if (!sent)
+        return NextResponse.json({ error: "RESET_DELIVERY_FAILED" }, { status: 502 });
+    } catch {
+      return NextResponse.json({ error: "RESET_DELIVERY_FAILED" }, { status: 502 });
+    }
+  }
   return NextResponse.json({ sent: true });
 }
