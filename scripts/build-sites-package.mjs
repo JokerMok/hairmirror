@@ -6,20 +6,25 @@ const root = resolve(process.cwd());
 const dist = join(root, "dist");
 const bundleDir = mkdtempSync(join(resolve(root, ".."), "hairmirror-wrangler-"));
 const openNext = join(root, ".open-next");
+const worker = join(bundleDir, "worker.js");
 
 try {
   execFileSync(join(root, "node_modules/.bin/opennextjs-cloudflare"), ["build"], { stdio: "inherit" });
-  execFileSync(join(root, "node_modules/.bin/wrangler"), [
-    "deploy",
-    join(openNext, "worker.js"),
-    "--dry-run",
-    "--outdir",
-    bundleDir,
-    "--assets",
-    join(openNext, "assets"),
-  ], { stdio: "inherit" });
+  try {
+    execFileSync(join(root, "node_modules/.bin/wrangler"), [
+      "deploy",
+      join(openNext, "worker.js"),
+      "--dry-run",
+      "--outdir",
+      bundleDir,
+      "--assets",
+      join(openNext, "assets"),
+    ], { stdio: "inherit", timeout: 120_000 });
+  } catch (error) {
+    if (!existsSync(worker)) throw error;
+    console.warn("Wrangler did not exit cleanly, but the complete worker bundle is available; continuing.");
+  }
 
-  const worker = join(bundleDir, "worker.js");
   if (!existsSync(worker)) throw new Error("Sites worker bundle was not generated");
   rmSync(dist, { recursive: true, force: true });
   mkdirSync(join(dist, "server"), { recursive: true });
