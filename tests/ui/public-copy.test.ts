@@ -18,4 +18,18 @@ describe("free-pilot public copy", () => {
     expect(content).not.toMatch(/published support channel/i);
     expect(content).toMatch(/support email will be configured|支持邮箱将在邀请外部试用前配置/);
   });
+
+  it("uses the public Sites origin and a real static share image", () => {
+    const site = readFileSync(resolve("src", "lib", "site.ts"), "utf8");
+    const layout = readFileSync(resolve("src", "app", "layout.tsx"), "utf8");
+    expect(site).toContain("hairmirror-v03.lopezerendira678.chatgpt.site");
+    expect(site).not.toContain("web-production-eeda8.up.railway.app");
+    expect(layout).toContain("image2-hairstyle-board.png");
+    expect(layout).toContain("zh_CN");
+  });
+
+  it("keeps payments disabled in the deployment template", () => {
+    const env = readFileSync(resolve(".env.example"), "utf8");
+    expect(env).toContain("BILLING_PROVIDER=disabled");
+  });
 });

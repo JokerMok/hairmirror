@@ -9,10 +9,12 @@ import {
   Check,
   ImagePlus,
   LoaderCircle,
+  Menu,
   Scissors,
   ShieldCheck,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ProtectedResultImage } from "@/components/protected-result-image";
@@ -156,6 +158,7 @@ export function StudioWizard({
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const [copied, setCopied] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [recentTasks, setRecentTasks] = useState<DesignTask[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -441,7 +444,25 @@ export function StudioWizard({
           <Link href="/account" className="button-secondary button-compact">
             {t("Account", "我的")}
           </Link>
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-label={mobileMenuOpen ? t("Close menu", "关闭菜单") : t("Open menu", "打开菜单")}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
         </div>
+        {mobileMenuOpen && (
+          <nav className="mobile-menu" aria-label={t("Mobile navigation", "移动端导航")}>
+            <a href="#examples" onClick={() => setMobileMenuOpen(false)}>{t("Examples", "案例")}</a>
+            <a href="#studio" onClick={() => setMobileMenuOpen(false)}>{t("Try it", "开始体验")}</a>
+            <Link href="/salon" onClick={() => setMobileMenuOpen(false)}>{t("For stylists", "发型师工作台")}</Link>
+            <Link href="/faq" onClick={() => setMobileMenuOpen(false)}>{t("FAQ", "常见问题")}</Link>
+            <Link href="/account" onClick={() => setMobileMenuOpen(false)}>{t("Account", "我的")}</Link>
+          </nav>
+        )}
       </header>
       <section className="page-container pb-16">
         {step === 0 && (

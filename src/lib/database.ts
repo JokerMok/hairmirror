@@ -60,6 +60,14 @@ function createDatabase(path: string) {
       expires_at INTEGER NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at INTEGER NOT NULL,
+      used_at INTEGER,
+      created_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS usage_records (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id),
@@ -352,6 +360,7 @@ function createDatabase(path: string) {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON auth_sessions(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id,expires_at);
     CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_records(user_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON generation_jobs(status,queued_at);
     CREATE INDEX IF NOT EXISTS idx_assets_task ON generated_assets(task_id);

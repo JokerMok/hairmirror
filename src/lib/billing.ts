@@ -19,7 +19,7 @@ export type BillingCatalogEntry = {
   currency: string;
   interval: "day" | "week" | "month" | "year" | null;
   active: boolean;
-  provider: "gumroad" | "stripe" | "paddle";
+  provider: "disabled" | "gumroad" | "stripe" | "paddle";
   checkoutUrl: string | null;
 };
 
@@ -81,9 +81,11 @@ export function isPlanKey(value: string): value is PlanKey {
   return value in BILLING_PLANS;
 }
 
-export function billingProvider(): "gumroad" | "stripe" | "paddle" {
+export function billingProvider(): "disabled" | "gumroad" | "stripe" | "paddle" {
   if (process.env.BILLING_PROVIDER === "paddle") return "paddle";
-  return process.env.BILLING_PROVIDER === "stripe" ? "stripe" : "gumroad";
+  if (process.env.BILLING_PROVIDER === "stripe") return "stripe";
+  if (process.env.BILLING_PROVIDER === "gumroad") return "gumroad";
+  return "disabled";
 }
 
 export async function validateUsdRecurringPrice(priceId: string) {
@@ -94,6 +96,7 @@ export async function validateUsdRecurringPrice(priceId: string) {
 }
 
 export function billingState(userId: string, now = Date.now()) {
+  if (billingProvider() === "disabled") return null;
   if (billingProvider() === "gumroad") return gumroadBillingState(userId, now);
   if (billingProvider() === "paddle") {
     const row = db()
@@ -272,6 +275,7 @@ export async function billingCatalog(
 ): Promise<BillingCatalogEntry[]> {
   const entries: BillingCatalogEntry[] = [];
   const language = locale === "en" ? "en" : "zh";
+  if (billingProvider() === "disabled") return entries;
   if (billingProvider() === "gumroad") {
     for (const key of ["salon_pro"] as PlanKey[]) {
       const productId = gumroadProductId(key);

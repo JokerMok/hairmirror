@@ -85,6 +85,8 @@ input:not([type="checkbox"]):not([type="range"]):focus, select:focus, textarea:f
 .site-nav { display: flex; align-items: center; gap: 30px; color: #42504b; font-size: .875rem; }
 .site-nav a:hover { color: var(--brand); }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.mobile-menu-toggle { display: none; }
+.mobile-menu { display: none; }
 
 .button-primary, .button-secondary {
   display: inline-flex;
@@ -204,6 +206,10 @@ input:not([type="checkbox"]):not([type="range"]):focus, select:focus, textarea:f
   .brand-mark { width: 38px; height: 38px; }
   .header-actions { gap: 6px; }
   .header-actions .button-secondary { display: none; }
+  .mobile-menu-toggle { display: inline-flex; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.76); color: var(--foreground); }
+  .mobile-menu { position: absolute; inset: calc(100% + 8px) 0 auto; display: grid; gap: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.98); box-shadow: var(--shadow-md); }
+  .mobile-menu a { min-height: 44px; display: flex; align-items: center; border-radius: 12px; padding: 0 13px; color: var(--foreground); font-size: .9rem; }
+  .mobile-menu a:hover, .mobile-menu a:focus-visible { background: var(--brand-soft); color: var(--brand); }
   .hero-grid { gap: 28px; padding: 38px 0 32px; }
   .hero-copy h1 { font-size: clamp(2.7rem, 13.5vw, 3.8rem); }
   .hero-intro > p { font-size: .96rem; }
@@ -214,12 +220,17 @@ input:not([type="checkbox"]):not([type="range"]):focus, select:focus, textarea:f
   .showcase-heading > p { margin-top: 10px; }
   .showcase-case-head { min-height: 78px; padding: 14px 18px; }
   .showcase-case-head > p { display: none; }
-  .showcase-source-row { grid-template-columns: 28vw 1fr; gap: 14px; padding: 14px 18px; }
+  .showcase-source-row { grid-template-columns: 1fr; gap: 14px; padding: 16px 18px; }
+  .showcase-source-image { width: min(78vw, 330px); margin-inline: auto; }
+  .showcase-source-copy { max-width: none; }
   .showcase-source-copy p { font-size: .76rem; line-height: 1.55; }
   .showcase-source-copy span { font-size: .58rem; }
   .showcase-source-card figcaption { font-size: .65rem; }
   .showcase-style figcaption { min-height: 48px; padding: 9px 4px; font-size: clamp(.62rem, 3vw, .76rem); }
   .showcase-style-image > span { right: 7px; bottom: 7px; font-size: .56rem; }
+  .showcase-triptych { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+  .showcase-style { flex: 0 0 78vw; scroll-snap-align: start; }
+  .showcase-style + .showcase-style { border-left: 1px solid var(--line); }
   .showcase-navigation { grid-template-columns: 44px 1fr 44px; gap: 8px; padding: 14px 12px 16px; }
   .showcase-tabs { gap: 4px; }
   .showcase-tabs button { min-height: 44px; padding: 6px; }

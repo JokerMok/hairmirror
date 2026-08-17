@@ -22,6 +22,7 @@ import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { SESSION_COOKIE } from "@/lib/session";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { listPaddleTransactions } from "@/lib/paddle-billing";
+import { SupportContact } from "@/components/support-contact";
 
 export const dynamic = "force-dynamic";
 
@@ -178,6 +179,10 @@ export default async function AccountPage({
             </div>
           )}
         </section>
+        <p className="mt-4 text-sm leading-6 text-[#56615d]">
+          {t("Need help or want to request deletion? ", "需要帮助或申请删除数据？")}
+          <SupportContact locale={locale} subject={zh ? "发型镜账号与删除请求" : "HairMirror account and deletion request"} />
+        </p>
 
         <section className="mt-6 flex flex-wrap items-center justify-between gap-5 rounded-3xl border border-[var(--line)] bg-white p-6 shadow-[var(--shadow-sm)]">
           <div>

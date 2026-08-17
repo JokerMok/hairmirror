@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { Scissors } from "lucide-react";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { SupportContact } from "@/components/support-contact";
 import { StructuredData } from "@/components/structured-data";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { absoluteUrl } from "@/lib/site";
@@ -108,6 +109,10 @@ export default async function FaqPage() {
           <Link href="/salon" className="button-secondary">{zh ? "查看发型师流程" : "See the stylist workflow"}</Link>
           <Link href="/privacy" className="px-3 py-2 text-sm underline">{zh ? "隐私政策" : "Privacy Policy"}</Link>
         </footer>
+        <p className="pb-12 text-sm leading-6 text-[var(--text-muted)]">
+          {zh ? "需要删除照片或反馈问题？联系支持：" : "Need a photo deleted or found an issue? Contact support: "}
+          <SupportContact locale={locale} subject={zh ? "发型镜支持请求" : "HairMirror support request"} />
+        </p>
       </div>
     </main>
   );

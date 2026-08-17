@@ -180,6 +180,14 @@ export default function LoginPage() {
                 placeholder={t("At least 8 characters", "至少8位")}
               />
             </label>
+            {mode === "login" && (
+              <Link
+                href="/forgot-password"
+                className="-mt-2 min-h-11 inline-flex items-center text-sm text-[var(--brand)] underline underline-offset-4"
+              >
+                {t("Forgot your password?", "忘记密码？")}
+              </Link>
+            )}
             {error && (
               <p
                 role="alert"

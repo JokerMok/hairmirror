@@ -3,7 +3,7 @@
 ## 当前环境
 
 - 上线时间：2026-07-16
-- 公开地址：<https://web-production-eeda8.up.railway.app>
+- 当前公开测试地址：<https://hairmirror-v03.lopezerendira678.chatgpt.site>
 - Railway 项目：`hairmirror`
 - 服务：`web`
 - 数据卷：`web-volume`，挂载路径 `/app/data`

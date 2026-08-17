@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SHOWCASE_CASES } from "@/components/home-showcase";
@@ -17,5 +17,14 @@ describe("public comparison evidence", () => {
         expect(style.label.zh.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it("keeps mobile comparison legible and navigable", () => {
+    const css = readFileSync(resolve("src", "app", "globals.css"), "utf8");
+    const studio = readFileSync(resolve("src", "components", "studio-wizard.tsx"), "utf8");
+    expect(css).toContain(".showcase-triptych { display: flex; overflow-x: auto;");
+    expect(css).toContain(".showcase-style { flex: 0 0 78vw;");
+    expect(studio).toContain("mobile-menu-toggle");
+    expect(studio).toContain("Mobile navigation");
   });
 });

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
+import { SupportContact } from "@/components/support-contact";
 
 export const metadata: Metadata = {
   title: "Refund Policy",
@@ -52,6 +53,10 @@ export default async function RefundPolicyPage() {
             {zh ? "查看服务条款" : "View Terms of Service"}
           </Link>
         </div>
+        <p className="mt-8 text-sm leading-6 text-[#56615d]">
+          {zh ? "试用反馈和删除请求：" : "Pilot feedback and deletion requests: "}
+          <SupportContact locale={zh ? "zh-CN" : "en"} subject={zh ? "发型镜试用支持请求" : "HairMirror pilot support request"} />
+        </p>
       </article>
     </main>
   );

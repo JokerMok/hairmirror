@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
+import { SupportContact } from "@/components/support-contact";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -90,6 +91,10 @@ export default async function PrivacyPage() {
             {zh ? "服务条款" : "Terms"}
           </Link>
         </div>
+        <p className="mt-8 text-sm leading-6 text-[#56615d]">
+          {zh ? "照片删除和隐私请求：" : "Photo deletion and privacy requests: "}
+          <SupportContact locale={zh ? "zh-CN" : "en"} subject={zh ? "发型镜隐私与删除请求" : "HairMirror privacy and deletion request"} />
+        </p>
       </article>
     </main>
   );
