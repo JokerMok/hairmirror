@@ -18,6 +18,7 @@ import { DEFAULT_DESIGN_PREFERENCES } from "@/lib/types";
 import { loginPath, STYLIST_CONSULTATION_PATH } from "@/lib/entry-routes";
 import {
   clearSalonDraft,
+  DEFAULT_PHOTO_CONSENT,
   loadSalonDraft,
   saveSalonDraft,
 } from "@/lib/consultation-draft";
@@ -80,7 +81,7 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
   const [selected, setSelected] = useState<string | null>(null);
   const [communicationCard, setCommunicationCard] = useState<CommunicationCardResponse | null>(null);
   const [jobs, setJobs] = useState<ConsultationGenerationJob[]>([]);
-  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(DEFAULT_PHOTO_CONSENT);
   const [customerEmail, setCustomerEmail] = useState("");
   const [brief, setBrief] = useState<ConsultationBrief>(defaultBrief);
 

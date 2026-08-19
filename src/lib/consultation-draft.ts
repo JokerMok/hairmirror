@@ -2,6 +2,7 @@ import type { ConsultationBrief, DesignPreferences } from "@/lib/types";
 
 export const STUDIO_DRAFT_KEY = "hairmirror:studio-draft:v1";
 export const SALON_DRAFT_KEY = "hairmirror:salon-draft:v1";
+export const DEFAULT_PHOTO_CONSENT = true;
 
 export type StudioConsultationDraft = {
   version: 1;

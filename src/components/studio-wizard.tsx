@@ -29,6 +29,7 @@ import type {
 import { DEFAULT_DESIGN_PREFERENCES } from "@/lib/types";
 import {
   clearStudioDraft,
+  DEFAULT_PHOTO_CONSENT,
   loadStudioDraft,
   saveStudioDraft,
 } from "@/lib/consultation-draft";
@@ -146,7 +147,7 @@ export function StudioWizard({
   ];
   const [step, setStep] = useState(0);
   const [preview, setPreview] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [consent, setConsent] = useState(DEFAULT_PHOTO_CONSENT);
   const [preferences, setPreferences] = useState(initial);
   const [task, setTask] = useState<DesignTask | null>(null);
   const [loading, setLoading] = useState(false);
