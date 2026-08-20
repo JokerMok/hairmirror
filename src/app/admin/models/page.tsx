@@ -9,7 +9,7 @@ import {
   ListChecks,
   Pencil,
 } from "lucide-react";
-import { ADMIN_COOKIE, adminCookieValue } from "@/lib/session";
+import { ADMIN_COOKIE, isAdminCookieValue } from "@/lib/session";
 import {
   costSummary,
   listGenerationJobs,
@@ -23,10 +23,8 @@ export default async function ModelsPage({
 }: {
   searchParams: Promise<{ created?: string }>;
 }) {
-  const secret = process.env.ADMIN_ACCESS_KEY;
-  const authorized = Boolean(
-    secret &&
-      (await cookies()).get(ADMIN_COOKIE)?.value === adminCookieValue(secret),
+  const authorized = isAdminCookieValue(
+    (await cookies()).get(ADMIN_COOKIE)?.value,
   );
   if (!authorized) redirect("/admin");
   const models = listModelConfigs();

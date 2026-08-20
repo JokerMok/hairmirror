@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, KeyRound } from "lucide-react";
-import { ADMIN_COOKIE, adminCookieValue } from "@/lib/session";
+import { ADMIN_COOKIE, isAdminCookieValue } from "@/lib/session";
 import { listModelConfigs } from "@/lib/model-operations";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +13,7 @@ export default async function ModelSettingsPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string }>;
 }) {
-  const secret = process.env.ADMIN_ACCESS_KEY;
-  if (
-    !secret ||
-    (await cookies()).get(ADMIN_COOKIE)?.value !== adminCookieValue(secret)
-  )
+  if (!isAdminCookieValue((await cookies()).get(ADMIN_COOKIE)?.value))
     redirect("/admin");
   const { id } = await params;
   const model = listModelConfigs().find((item) => item.id === id);

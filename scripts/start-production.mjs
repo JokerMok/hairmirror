@@ -15,7 +15,8 @@ if (railway && !process.env.RAILWAY_VOLUME_MOUNT_PATH) {
 }
 
 const requiredSecrets = [
-  "ADMIN_ACCESS_KEY",
+  "ADMIN_USERNAME",
+  "ADMIN_PASSWORD",
   "INTERNAL_JOB_SECRET",
   "MODEL_SECRET_KEY",
   "BILLING_SECRET_KEY",

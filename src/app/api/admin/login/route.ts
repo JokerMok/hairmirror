@@ -2,15 +2,23 @@ import { NextResponse } from "next/server";
 import {
   ADMIN_COOKIE,
   adminCookieValue,
+  getAdminCredentials,
   safeEqual,
   safeRedirectUrl,
 } from "@/lib/session";
 
 export async function POST(request: Request) {
-  const secret = process.env.ADMIN_ACCESS_KEY;
+  const credentials = getAdminCredentials();
   const body = await request.formData();
-  const key = body.get("key");
-  if (!secret || typeof key !== "string" || !safeEqual(key, secret))
+  const username = body.get("username");
+  const password = body.get("password");
+  if (
+    !credentials ||
+    typeof username !== "string" ||
+    typeof password !== "string" ||
+    !safeEqual(username, credentials.username) ||
+    !safeEqual(password, credentials.password)
+  )
     return NextResponse.redirect(
       safeRedirectUrl(request, "/admin?error=invalid"),
       303,
@@ -19,12 +27,16 @@ export async function POST(request: Request) {
     safeRedirectUrl(request, "/admin"),
     303,
   );
-  response.cookies.set(ADMIN_COOKIE, adminCookieValue(secret), {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 8,
-    path: "/",
-  });
+  response.cookies.set(
+    ADMIN_COOKIE,
+    adminCookieValue(credentials.username, credentials.password),
+    {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 8,
+      path: "/",
+    },
+  );
   return response;
 }

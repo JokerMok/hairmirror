@@ -4,12 +4,27 @@ import type { NextRequest } from "next/server";
 export const SESSION_COOKIE = "hair_session";
 export const ADMIN_COOKIE = "hair_admin";
 
+export type AdminCredentials = {
+  username: string;
+  password: string;
+};
+
 export function getOrCreateSession(request: NextRequest) {
   return request.cookies.get(SESSION_COOKIE)?.value ?? randomUUID();
 }
 
-export function adminCookieValue(secret: string) {
-  return createHash("sha256").update(secret).digest("hex");
+export function getAdminCredentials(): AdminCredentials | null {
+  const username = process.env.ADMIN_USERNAME?.trim();
+  const password = process.env.ADMIN_PASSWORD;
+  return username && password ? { username, password } : null;
+}
+
+export function adminCookieValue(username: string, password: string) {
+  return createHash("sha256")
+    .update(username)
+    .update("\0")
+    .update(password)
+    .digest("hex");
 }
 
 export function safeEqual(left: string, right: string) {
@@ -19,9 +34,28 @@ export function safeEqual(left: string, right: string) {
 }
 
 export function isAdminRequest(request: NextRequest) {
-  const secret = process.env.ADMIN_ACCESS_KEY;
+  const credentials = getAdminCredentials();
   const value = request.cookies.get(ADMIN_COOKIE)?.value;
-  return Boolean(secret && value && safeEqual(value, adminCookieValue(secret)));
+  return Boolean(
+    credentials &&
+      value &&
+      safeEqual(
+        value,
+        adminCookieValue(credentials.username, credentials.password),
+      ),
+  );
+}
+
+export function isAdminCookieValue(value: string | undefined) {
+  const credentials = getAdminCredentials();
+  return Boolean(
+    credentials &&
+      value &&
+      safeEqual(
+        value,
+        adminCookieValue(credentials.username, credentials.password),
+      ),
+  );
 }
 
 export function isInternalRequest(request: NextRequest) {

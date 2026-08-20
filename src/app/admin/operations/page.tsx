@@ -15,15 +15,11 @@ import {
   listOperationalEvents,
   operationsHealth,
 } from "@/lib/operations";
-import { ADMIN_COOKIE, adminCookieValue } from "@/lib/session";
+import { ADMIN_COOKIE, isAdminCookieValue } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 export default async function OperationsPage() {
-  const secret = process.env.ADMIN_ACCESS_KEY;
-  if (
-    !secret ||
-    (await cookies()).get(ADMIN_COOKIE)?.value !== adminCookieValue(secret)
-  )
+  if (!isAdminCookieValue((await cookies()).get(ADMIN_COOKIE)?.value))
     redirect("/admin");
   const health = operationsHealth();
   const alerts = listOperationalAlerts("open");

@@ -11,7 +11,11 @@ import {
   UsersRound,
 } from "lucide-react";
 import { listAllTasks, listFeedback } from "@/lib/task-store";
-import { ADMIN_COOKIE, adminCookieValue } from "@/lib/session";
+import {
+  ADMIN_COOKIE,
+  getAdminCredentials,
+  isAdminCookieValue,
+} from "@/lib/session";
 import { listUsers } from "@/lib/database";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +25,13 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const secret = process.env.ADMIN_ACCESS_KEY;
+  const configured = Boolean(getAdminCredentials());
   const jar = await cookies();
-  const authorized = Boolean(
-    secret && jar.get(ADMIN_COOKIE)?.value === adminCookieValue(secret),
-  );
+  const authorized = isAdminCookieValue(jar.get(ADMIN_COOKIE)?.value);
   if (!authorized)
     return (
       <AdminLogin
-        configured={Boolean(secret)}
+        configured={configured}
         invalid={(await searchParams).error === "invalid"}
       />
     );
@@ -217,8 +219,8 @@ function AdminLogin({
         <h1 className="mt-5 text-3xl font-semibold">运营台受保护</h1>
         <p className="mt-3 text-sm leading-6 text-white/60">
           {configured
-            ? "请输入部署环境中配置的运营访问密钥。"
-            : "当前未配置 ADMIN_ACCESS_KEY，运营台保持关闭。"}
+            ? "请输入运营账号和密码。"
+            : "当前未配置 ADMIN_USERNAME / ADMIN_PASSWORD，运营台保持关闭。"}
         </p>
         {invalid && (
           <p
@@ -230,12 +232,26 @@ function AdminLogin({
         )}
         {configured && (
           <form action="/api/admin/login" method="post" className="mt-7">
-            <label className="text-sm text-white/70" htmlFor="key">
-              访问密钥
+            <label className="text-sm text-white/70" htmlFor="username">
+              账号
             </label>
             <input
-              id="key"
-              name="key"
+              id="username"
+              name="username"
+              required
+              type="text"
+              autoComplete="username"
+              className="mt-2 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3"
+            />
+            <label
+              className="mt-4 block text-sm text-white/70"
+              htmlFor="password"
+            >
+              密码
+            </label>
+            <input
+              id="password"
+              name="password"
               required
               type="password"
               autoComplete="current-password"

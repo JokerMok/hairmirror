@@ -24,6 +24,7 @@
 /data/*.key
 /data/generated/
 /data/uploads/
+/data/backups/
 /backups/
 
 # misc
