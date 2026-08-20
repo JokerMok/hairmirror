@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HAIRSTYLES } from "./catalog";
-import { closeDatabaseForTest, db } from "./database";
+import {
+  closeDatabaseForTest,
+  db,
+  RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+} from "./database";
 import { generateWithRunningHub } from "./runninghub-provider";
 import { DEFAULT_DESIGN_PREFERENCES } from "./types";
 
@@ -59,8 +63,7 @@ describe("RunningHub adapter", () => {
     );
     const result = await generateWithRunningHub(
       {
-        endpoint:
-          "https://www.runninghub.cn/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image",
+        endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
         apiKey: "test-key",
         timeoutMs: 5000,
       },
@@ -102,6 +105,7 @@ describe("RunningHub adapter", () => {
               taskId,
               status: "FAILED",
               errorCode: "MODEL_FAILED",
+              errorMessage: "模型失败",
             });
           return Response.json({
             taskId,
@@ -123,8 +127,7 @@ describe("RunningHub adapter", () => {
     await expect(
       generateWithRunningHub(
         {
-          endpoint:
-            "https://www.runninghub.cn/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image",
+          endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
           apiKey: "test-key",
           timeoutMs: 5000,
         },
@@ -138,7 +141,9 @@ describe("RunningHub adapter", () => {
         },
       ),
     ).rejects.toMatchObject({
-      message: "MODEL_FAILED",
+      message: "MODEL_FAILED: 模型失败",
+      errorCode: "MODEL_FAILED",
+      errorMessage: "模型失败",
       actualCostMicros: 60_000,
     });
     expect(
@@ -151,5 +156,92 @@ describe("RunningHub adapter", () => {
       ).count,
     ).toBe(0);
     expect(readdirSync(process.env.GENERATED_ASSETS_DIR!)).toHaveLength(0);
+  });
+
+  it("preserves and sanitizes submit error code and message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          errorCode: "40310",
+        errorMessage:
+          "供应商第一行\n   第二行 data:image/png;base64,iVBORw0KGgo= Bearer secret-token " +
+          "x".repeat(700),
+        }),
+      ),
+    );
+
+    let caught: unknown;
+    try {
+      await generateWithRunningHub(
+        {
+          endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+          apiKey: "test-key",
+          timeoutMs: 5000,
+        },
+        HAIRSTYLES.slice(0, 1),
+        {
+          taskId: crypto.randomUUID(),
+          ownerSessionId: "test-session",
+          userId: null,
+          preferences: DEFAULT_DESIGN_PREFERENCES,
+          imageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+        },
+      );
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    const providerError = caught as Error & {
+      errorCode?: string;
+      errorMessage?: string;
+    };
+    expect(providerError.errorCode).toBe("40310");
+    expect(providerError.errorMessage?.startsWith("供应商第一行 第二行")).toBe(
+      true,
+    );
+    expect(providerError.errorMessage).not.toContain("\n");
+    expect(providerError.errorMessage).toContain("[IMAGE_REDACTED]");
+    expect(providerError.errorMessage).toContain("Bearer [REDACTED]");
+    expect(providerError.errorMessage?.length).toBeLessThanOrEqual(500);
+    expect(providerError.message).toMatch(/^40310: /);
+  });
+
+  it("preserves polling failure error code and message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        if (String(input).endsWith("/openapi/v2/query"))
+          return Response.json({
+            taskId: "rh-failed",
+            status: "FAILED",
+            errorCode: "40310",
+            errorMessage: "额度不足，请升级套餐",
+          });
+        return Response.json({ taskId: "rh-failed", status: "RUNNING" });
+      }),
+    );
+
+    await expect(
+      generateWithRunningHub(
+        {
+          endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+          apiKey: "test-key",
+          timeoutMs: 5000,
+        },
+        HAIRSTYLES.slice(0, 1),
+        {
+          taskId: crypto.randomUUID(),
+          ownerSessionId: "test-session",
+          userId: null,
+          preferences: DEFAULT_DESIGN_PREFERENCES,
+          imageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+        },
+      ),
+    ).rejects.toMatchObject({
+      message: "40310: 额度不足，请升级套餐",
+      errorCode: "40310",
+      errorMessage: "额度不足，请升级套餐",
+    });
   });
 });

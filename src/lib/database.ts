@@ -4,6 +4,11 @@ import { DatabaseSync } from "node:sqlite";
 
 export type UserRole = "personal" | "store_owner" | "staff";
 
+export const RUNNINGHUB_CHINA_ENDPOINT =
+  "https://www.runninghub.cn/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image";
+export const RUNNINGHUB_INTERNATIONAL_ENDPOINT =
+  "https://www.runninghub.ai/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image";
+
 export interface AuthUser {
   id: string;
   phone: string;
@@ -417,9 +422,19 @@ function createDatabase(path: string) {
     .prepare(
       `INSERT OR IGNORE INTO model_configs
     (id,name,provider,model,endpoint,encrypted_api_key,enabled,priority,timeout_ms,cost_per_image_micros,currency,created_at,updated_at)
-    VALUES('runninghub-g31-flash-lite','RunningHub G31 Flash Lite','runninghub','rhart-image-n-g31-flash-lite','https://www.runninghub.cn/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image',NULL,0,100,180000,0,'CNY',?,?)`,
+    VALUES('runninghub-g31-flash-lite','RunningHub G31 Flash Lite','runninghub','rhart-image-n-g31-flash-lite',?,NULL,0,100,180000,0,'CNY',?,?)`,
     )
-    .run(now, now);
+    .run(RUNNINGHUB_INTERNATIONAL_ENDPOINT, now, now);
+  database
+    .prepare(
+      "UPDATE model_configs SET endpoint=?,updated_at=? WHERE id=? AND endpoint=?",
+    )
+    .run(
+      RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+      now,
+      "runninghub-g31-flash-lite",
+      RUNNINGHUB_CHINA_ENDPOINT,
+    );
   return database;
 }
 

@@ -24,11 +24,43 @@ type RunningHubContext = {
   imageDataUrl: string;
 };
 
+const MAX_PROVIDER_ERROR_MESSAGE_LENGTH = 500;
+
+function cleanErrorCode(value: unknown, fallback: string) {
+  const code = String(value ?? "").trim();
+  return (code || fallback).slice(0, 100);
+}
+
+function cleanErrorMessage(value: unknown, fallback: string) {
+  let message = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/Bearer\s+[^\s]+/gi, "Bearer [REDACTED]")
+    .replace(
+      /data:[^,;\s]+;base64,[A-Za-z0-9+/=]+/gi,
+      "[IMAGE_REDACTED]",
+    );
+  if (!message) message = fallback;
+  return message.length > MAX_PROVIDER_ERROR_MESSAGE_LENGTH
+    ? `${message.slice(0, MAX_PROVIDER_ERROR_MESSAGE_LENGTH - 1)}…`
+    : message;
+}
+
 export class RunningHubGenerationError extends Error {
+  errorCode: string;
+  errorMessage: string;
   actualCostMicros: number;
-  constructor(message: string, actualCostMicros: number) {
-    super(message);
+  constructor(
+    errorCode: string,
+    errorMessage: string,
+    actualCostMicros: number,
+  ) {
+    const safeCode = cleanErrorCode(errorCode, "RUNNINGHUB_FAILED");
+    const safeMessage = cleanErrorMessage(errorMessage, "供应商未提供具体错误信息");
+    super(`${safeCode}: ${safeMessage}`);
     this.name = "RunningHubGenerationError";
+    this.errorCode = safeCode;
+    this.errorMessage = safeMessage;
     this.actualCostMicros = actualCostMicros;
   }
 }
@@ -79,8 +111,18 @@ async function requestJson(url: string, init: RequestInit, timeoutMs: number) {
   const data = (await response
     .json()
     .catch(() => null)) as RunningHubResponse | null;
-  if (!response.ok || !data)
-    throw new Error(`RUNNINGHUB_HTTP_${response.status}`);
+  if (!data)
+    throw new RunningHubGenerationError(
+      `RUNNINGHUB_HTTP_${response.status}`,
+      "RunningHub 返回了无法解析的响应",
+      0,
+    );
+  if (!response.ok)
+    throw new RunningHubGenerationError(
+      data.errorCode || `RUNNINGHUB_HTTP_${response.status}`,
+      data.errorMessage || `HTTP ${response.status}`,
+      0,
+    );
   return data;
 }
 
@@ -106,7 +148,11 @@ async function submit(
     config.timeoutMs,
   );
   if (!data.taskId)
-    throw new Error(data.errorCode || "RUNNINGHUB_SUBMIT_FAILED");
+    throw new RunningHubGenerationError(
+      data.errorCode || "RUNNINGHUB_SUBMIT_FAILED",
+      data.errorMessage || "RunningHub 未返回任务 ID",
+      0,
+    );
   return data.taskId;
 }
 
@@ -141,7 +187,11 @@ async function waitForResult(config: RunningHubConfig, taskId: string) {
       };
     }
     if (data.status === "FAILED")
-      throw new Error(data.errorCode || "RUNNINGHUB_FAILED");
+      throw new RunningHubGenerationError(
+        data.errorCode || "RUNNINGHUB_FAILED",
+        data.errorMessage || "RunningHub 任务失败",
+        0,
+      );
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
   throw new Error("RUNNINGHUB_TIMEOUT");
@@ -230,8 +280,13 @@ export async function generateWithRunningHub(
         join(/* turbopackIgnore: true */ process.cwd(), "data", "generated"),
     );
     const reason = failed.reason;
+    if (reason instanceof RunningHubGenerationError) {
+      reason.actualCostMicros = actualCostMicros;
+      throw reason;
+    }
     throw new RunningHubGenerationError(
-      reason instanceof Error ? reason.message : "RUNNINGHUB_FAILED",
+      "RUNNINGHUB_FAILED",
+      reason instanceof Error ? reason.message : "RunningHub 任务失败",
       actualCostMicros,
     );
   }

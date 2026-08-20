@@ -8,6 +8,7 @@ import {
   closeDatabaseForTest,
   db,
   getAuthUserById,
+  RUNNINGHUB_INTERNATIONAL_ENDPOINT,
   type AuthUser,
 } from "./database";
 import {
@@ -299,5 +300,61 @@ describe("persistent generation queue", () => {
     expect(row.status).toBe("queued");
     expect(row.attempts).toBe(1);
     expect(row.source_image_path).toBe(source.path);
+  });
+
+  it("stores provider error code and cleaned message for operations review", async () => {
+    const encrypted = encryptSecret("test-key");
+    db()
+      .prepare(
+        "UPDATE model_configs SET provider='runninghub',model='test',endpoint=?,encrypted_api_key=? WHERE id='demo-fixed'",
+      )
+      .run(RUNNINGHUB_INTERNATIONAL_ENDPOINT, encrypted);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        if (String(input).endsWith("/openapi/v2/query"))
+          return Response.json({
+            taskId: "rh-operations-error",
+            status: "FAILED",
+            errorCode: "40310",
+            errorMessage: "供应商错误\n  额度不足  ",
+          });
+        return Response.json({
+          taskId: "rh-operations-error",
+          status: "RUNNING",
+        });
+      }),
+    );
+    const item = task();
+    const source = persistSourceImage(
+      "data:image/png;base64,iVBORw0KGgo=",
+      item.id,
+    );
+    enqueuePersistentGeneration({
+      task: item,
+      user: queueUser,
+      ownerKey: `user:${queueUserId}`,
+      idempotencyKey: "request-provider-message",
+      sourceImagePath: source.path,
+      sourceExpiresAt: source.expiresAt,
+    });
+
+    const baseNow = Date.now();
+    await processNextGenerationJob(baseNow);
+    await processNextGenerationJob(baseNow + 100_000);
+    await processNextGenerationJob(baseNow + 200_000);
+
+    const row = db()
+      .prepare(
+        "SELECT j.status,j.error_code,p.last_error FROM generation_jobs j JOIN generation_job_payloads p ON p.job_id=j.id WHERE j.task_id=?",
+      )
+      .get(item.id) as {
+      status: string;
+      error_code: string;
+      last_error: string;
+    };
+    expect(row.status).toBe("failed");
+    expect(row.error_code).toBe("40310");
+    expect(row.last_error).toBe("40310: 供应商错误 额度不足");
   });
 });

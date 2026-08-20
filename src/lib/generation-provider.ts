@@ -1,6 +1,7 @@
 import type { DesignPreferences, HairstyleTemplate } from "./types";
 import { getActiveModelRuntime, type ModelRuntime } from "./model-operations";
 import { generateWithRunningHub } from "./runninghub-provider";
+import { RUNNINGHUB_INTERNATIONAL_ENDPOINT } from "./database";
 
 export type GenerationResult = {
   mode: "demo-fixed" | "mock" | "api";
@@ -44,7 +45,7 @@ export async function generateHairstyleImages(
       {
         endpoint:
           active.endpoint ||
-          "https://www.runninghub.cn/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image",
+          RUNNINGHUB_INTERNATIONAL_ENDPOINT,
         apiKey: active.apiKey,
         timeoutMs: active.timeoutMs,
       },

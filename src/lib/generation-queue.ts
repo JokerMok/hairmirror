@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import type { AuthUser } from "./database";
 import { db } from "./database";
 import { generateHairstyleImages } from "./generation-provider";
+import { RunningHubGenerationError } from "./runninghub-provider";
 import {
   getActiveModelConfig,
   getModelRuntimeById,
@@ -461,6 +462,14 @@ function retryable(code: string) {
   ].some((item) => code.startsWith(item));
 }
 
+function failureDetails(error: unknown) {
+  if (error instanceof RunningHubGenerationError)
+    return { code: error.errorCode, message: error.message };
+  const message = error instanceof Error ? error.message : "GENERATION_FAILED";
+  const clean = message.replace(/\s+/g, " ").trim().slice(0, 500);
+  return { code: clean.slice(0, 100), message: clean };
+}
+
 function finalizeSuccess(
   job: ClaimedJob,
   generated: Awaited<ReturnType<typeof generateHairstyleImages>>,
@@ -554,7 +563,12 @@ function finalizeSuccess(
   return variants;
 }
 
-function finalizeFailure(job: ClaimedJob, code: string, costMicros: number) {
+function finalizeFailure(
+  job: ClaimedJob,
+  code: string,
+  message: string,
+  costMicros: number,
+) {
   const database = db();
   const now = new Date().toISOString();
   database.exec("BEGIN IMMEDIATE");
@@ -578,7 +592,7 @@ function finalizeFailure(job: ClaimedJob, code: string, costMicros: number) {
       .prepare(
         "UPDATE generation_job_payloads SET lock_token=NULL,locked_at=NULL,heartbeat_at=NULL,last_error=? WHERE job_id=?",
       )
-      .run(code, job.id);
+      .run(message, job.id);
     database.exec("COMMIT");
   } catch (error) {
     database.exec("ROLLBACK");
@@ -597,6 +611,7 @@ function finalizeFailure(job: ClaimedJob, code: string, costMicros: number) {
 function requeue(
   job: ClaimedJob,
   code: string,
+  message: string,
   costMicros: number,
   now = Date.now(),
 ) {
@@ -613,7 +628,7 @@ function requeue(
       .prepare(
         "UPDATE generation_job_payloads SET available_at=?,lock_token=NULL,locked_at=NULL,heartbeat_at=NULL,last_error=? WHERE job_id=?",
       )
-      .run(now + delay, code, job.id);
+      .run(now + delay, message, job.id);
     database.exec("COMMIT");
   } catch (error) {
     database.exec("ROLLBACK");
@@ -725,18 +740,34 @@ export async function processNextGenerationJob(now = Date.now()) {
     finalizeSuccess(job, generated);
     return { status: "completed" as const, jobId: job.id, taskId: job.taskId };
   } catch (error) {
-    const code = error instanceof Error ? error.message : "GENERATION_FAILED";
+    const failure = failureDetails(error);
     const cost =
       typeof error === "object" && error && "actualCostMicros" in error
         ? Number(error.actualCostMicros)
         : 0;
     removeAssetsForTask(job.taskId);
-    if (job.attempts < job.maxAttempts && retryable(code)) {
-      const delayMs = requeue(job, code, Number.isFinite(cost) ? cost : 0, now);
-      return { status: "retrying" as const, jobId: job.id, delayMs, code };
+    if (job.attempts < job.maxAttempts && retryable(failure.code)) {
+      const delayMs = requeue(
+        job,
+        failure.code,
+        failure.message,
+        Number.isFinite(cost) ? cost : 0,
+        now,
+      );
+      return {
+        status: "retrying" as const,
+        jobId: job.id,
+        delayMs,
+        code: failure.code,
+      };
     }
-    finalizeFailure(job, code.slice(0, 100), Number.isFinite(cost) ? cost : 0);
-    return { status: "failed" as const, jobId: job.id, code };
+    finalizeFailure(
+      job,
+      failure.code,
+      failure.message,
+      Number.isFinite(cost) ? cost : 0,
+    );
+    return { status: "failed" as const, jobId: job.id, code: failure.code };
   }
 }
 
@@ -917,10 +948,10 @@ export function recoverStaleGenerationJobs(now = Date.now()) {
       finalizeCancellation(job);
       cancelled += 1;
     } else if (job.attempts < job.maxAttempts) {
-      requeue(job, "WORKER_STALE", 0, now);
+      requeue(job, "WORKER_STALE", "WORKER_STALE", 0, now);
       requeued += 1;
     } else {
-      finalizeFailure(job, "WORKER_STALE", 0);
+      finalizeFailure(job, "WORKER_STALE", "WORKER_STALE", 0);
       failed += 1;
     }
   }
