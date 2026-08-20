@@ -49,7 +49,8 @@ function estimatedGenerationCost(
     process.env.GENERATION_DEFAULT_COST_PER_IMAGE_MICROS,
     70_000,
   );
-  return Math.max(modelCostPerImage, fallback) * variantCount;
+  const costPerImage = modelCostPerImage > 0 ? modelCostPerImage : fallback;
+  return costPerImage * variantCount;
 }
 function assertGlobalCostFuse(additionalMicros: number, now = Date.now()) {
   const limit = positiveInteger(
@@ -124,7 +125,7 @@ function enqueuePersistentGenerationInTransaction(
     );
   database
     .prepare(
-      "INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,error_code,attempts,queued_at) VALUES(?,?,?,?, 'queued',?,?,0,NULL,0,?)",
+      "INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,currency,error_code,attempts,queued_at) VALUES(?,?,?,?, 'queued',?,?,0,?,NULL,0,?)",
     )
     .run(
       jobId,
@@ -133,6 +134,7 @@ function enqueuePersistentGenerationInTransaction(
       model.id,
       input.task.variants.length,
       estimatedCost,
+      model.currency,
       now,
     );
   if (input.reserveAccess !== false) {

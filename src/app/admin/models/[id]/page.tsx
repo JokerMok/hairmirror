@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import { ADMIN_COOKIE, isAdminCookieValue } from "@/lib/session";
+import { formatCost } from "@/lib/currency";
 import { listModelConfigs } from "@/lib/model-operations";
 
 export const dynamic = "force-dynamic";
@@ -82,20 +83,33 @@ export default async function ModelSettingsPage({
             </label>
           </div>
           <label className="text-sm text-white/65">
-            每张成本（{model.currency}）
+            每张金额（{model.currency}）
             <input
-              name="costPerImageYuan"
+              name="costPerImage"
               type="number"
               min="0"
               max="100"
               step="0.0001"
               defaultValue={model.costPerImageMicros / 1_000_000}
-              placeholder="例如 0.07"
+              placeholder="例如 0.015"
               className="mt-2 w-full rounded-xl border border-white/15 bg-black/15 px-4 py-3"
             />
           </label>
+          <label className="text-sm text-white/65">
+            币种
+            <select
+              name="currency"
+              defaultValue={model.currency}
+              className="mt-2 w-full rounded-xl border border-white/15 bg-black/15 px-4 py-3"
+            >
+              <option value="CNY">CNY</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
           <p className="-mt-2 text-xs text-white/40">
-            RunningHub 当前价格可直接填写 0.07。
+            {model.provider === "runninghub"
+              ? "RunningHub 国际站当前价格为 $0.015/张。"
+              : `当前配置：${formatCost(model.costPerImageMicros, model.currency)}/张。`}
           </p>
           <label className="flex items-center gap-3 rounded-xl bg-black/15 px-4 py-3 text-sm">
             <input

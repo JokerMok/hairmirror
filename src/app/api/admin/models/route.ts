@@ -19,12 +19,12 @@ const schema = z
     ),
     priority: z.coerce.number().int().min(1).max(999),
     timeoutMs: z.coerce.number().int().min(1000).max(600000),
-    costPerImageYuan: z.coerce.number().min(0).max(100),
+    costPerImage: z.coerce.number().min(0).max(100),
     currency: z.enum(["CNY", "USD"]),
   })
-  .transform(({ costPerImageYuan, ...input }) => ({
+  .transform(({ costPerImage, ...input }) => ({
     ...input,
-    costPerImageMicros: Math.round(costPerImageYuan * 1_000_000),
+    costPerImageMicros: Math.round(costPerImage * 1_000_000),
   }));
 
 export async function GET(request: NextRequest) {

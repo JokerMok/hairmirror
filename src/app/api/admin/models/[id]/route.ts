@@ -31,7 +31,8 @@ const runtimeSchema = z.object({
   ),
   priority: z.coerce.number().int().min(1).max(999),
   timeoutMs: z.coerce.number().int().min(1000).max(600000),
-  costPerImageYuan: z.coerce.number().min(0).max(100),
+  costPerImage: z.coerce.number().min(0).max(100),
+  currency: z.enum(["CNY", "USD"]),
 });
 export async function POST(
   request: NextRequest,
@@ -45,8 +46,8 @@ export async function POST(
   if (!parsed.success)
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   const id = (await params).id;
-  const { costPerImageYuan, ...input } = parsed.data;
-  const costPerImageMicros = Math.round(costPerImageYuan * 1_000_000);
+  const { costPerImage, ...input } = parsed.data;
+  const costPerImageMicros = Math.round(costPerImage * 1_000_000);
   if (!updateModelRuntime(id, { ...input, costPerImageMicros }))
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   return NextResponse.redirect(

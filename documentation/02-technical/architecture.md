@@ -44,6 +44,8 @@
 
 - 适配器使用 `rhart-image-n-g31-flash-lite/image-to-image` 提交图生图任务，通过 `/openapi/v2/query` 轮询结果。
 - 当前默认使用 RunningHub 国际站 Endpoint：`https://www.runninghub.ai/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image`。数据库初始化会将同一模型 ID 下完全匹配旧中国站 Endpoint 的配置幂等迁移到国际站，不覆盖自定义 Endpoint 或加密密钥。
+- RunningHub 国际站默认成本为 USD `0.015`/张；模型配置更新只影响未来任务，生成任务入队时会保存币种快照，历史任务默认保留 CNY。
+- 运营台成本按任务币种分别汇总，不跨币种直接相加。
 - 三个发型方案并行提交，每项使用独立的人物一致性约束提示词。
 - 提交时使用 Base64 Data URI 传递原图，不向浏览器暴露供应商密钥。
 - RunningHub 返回的错误码和错误消息会清理空白、脱敏并限制长度后写入运营任务错误记录；不会记录 API Key、照片、Base64 图片或完整请求体。

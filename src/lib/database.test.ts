@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +7,8 @@ import {
   closeDatabaseForTest,
   db,
   RUNNINGHUB_CHINA_ENDPOINT,
+  RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+  RUNNINGHUB_INTERNATIONAL_CURRENCY,
   RUNNINGHUB_INTERNATIONAL_ENDPOINT,
 } from "./database";
 
@@ -26,11 +29,19 @@ describe("database model defaults", () => {
   it("writes the RunningHub international endpoint by default", () => {
     const row = db()
       .prepare(
-        "SELECT endpoint FROM model_configs WHERE id='runninghub-g31-flash-lite'",
+        "SELECT endpoint,cost_per_image_micros,currency FROM model_configs WHERE id='runninghub-g31-flash-lite'",
       )
-      .get() as { endpoint: string };
+      .get() as {
+      endpoint: string;
+      cost_per_image_micros: number;
+      currency: string;
+    };
 
     expect(row.endpoint).toBe(RUNNINGHUB_INTERNATIONAL_ENDPOINT);
+    expect(row.cost_per_image_micros).toBe(
+      RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+    );
+    expect(row.currency).toBe(RUNNINGHUB_INTERNATIONAL_CURRENCY);
   });
 
   it("migrates only the exact legacy endpoint and preserves model settings", () => {
@@ -75,8 +86,10 @@ describe("database model defaults", () => {
     expect(row.enabled).toBe(1);
     expect(row.priority).toBe(7);
     expect(row.timeout_ms).toBe(91_000);
-    expect(row.cost_per_image_micros).toBe(1234);
-    expect(row.currency).toBe("USD");
+    expect(row.cost_per_image_micros).toBe(
+      RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+    );
+    expect(row.currency).toBe(RUNNINGHUB_INTERNATIONAL_CURRENCY);
     expect(custom.endpoint).toBe("https://custom.example/image-to-image");
 
     closeDatabaseForTest();
@@ -85,5 +98,102 @@ describe("database model defaults", () => {
       .prepare("SELECT updated_at FROM model_configs WHERE id=?")
       .get("runninghub-g31-flash-lite") as { updated_at: string };
     expect(rerun.updated_at).toBe(firstMigrationTimestamp);
+  });
+
+  it("migrates international pricing without changing protected model settings", () => {
+    const database = db();
+    database
+      .prepare(
+        "UPDATE model_configs SET endpoint=?,encrypted_api_key=?,enabled=?,priority=?,timeout_ms=?,cost_per_image_micros=?,currency=? WHERE id='runninghub-g31-flash-lite'",
+      )
+      .run(
+        RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+        "encrypted-secret",
+        1,
+        7,
+        91_000,
+        70_000,
+        "CNY",
+      );
+
+    closeDatabaseForTest();
+    const migrated = db();
+    const row = migrated
+      .prepare("SELECT * FROM model_configs WHERE id=?")
+      .get("runninghub-g31-flash-lite") as Record<string, unknown>;
+    const firstMigrationTimestamp = String(row.updated_at);
+
+    expect(row.endpoint).toBe(RUNNINGHUB_INTERNATIONAL_ENDPOINT);
+    expect(row.cost_per_image_micros).toBe(
+      RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+    );
+    expect(row.currency).toBe(RUNNINGHUB_INTERNATIONAL_CURRENCY);
+    expect(row.encrypted_api_key).toBe("encrypted-secret");
+    expect(row.enabled).toBe(1);
+    expect(row.priority).toBe(7);
+    expect(row.timeout_ms).toBe(91_000);
+
+    closeDatabaseForTest();
+    const reopened = db();
+    const rerun = reopened
+      .prepare("SELECT updated_at,cost_per_image_micros,currency FROM model_configs WHERE id=?")
+      .get("runninghub-g31-flash-lite") as {
+      updated_at: string;
+      cost_per_image_micros: number;
+      currency: string;
+    };
+    expect(rerun.updated_at).toBe(firstMigrationTimestamp);
+    expect(rerun.cost_per_image_micros).toBe(
+      RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+    );
+    expect(rerun.currency).toBe(RUNNINGHUB_INTERNATIONAL_CURRENCY);
+  });
+
+  it("adds a CNY snapshot to existing generation jobs without changing their costs", () => {
+    const legacy = new DatabaseSync(process.env.SQLITE_PATH!);
+    legacy.exec(`
+      CREATE TABLE generation_jobs (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL UNIQUE,
+        user_id TEXT,
+        model_config_id TEXT,
+        status TEXT NOT NULL,
+        variant_count INTEGER NOT NULL,
+        estimated_cost_micros INTEGER NOT NULL DEFAULT 0,
+        actual_cost_micros INTEGER NOT NULL DEFAULT 0,
+        error_code TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        queued_at TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT
+      );
+      INSERT INTO generation_jobs(
+        id,task_id,status,variant_count,estimated_cost_micros,actual_cost_micros,queued_at,completed_at
+      ) VALUES('legacy-job','legacy-task','completed',3,210000,210000,'2026-08-01T00:00:00.000Z','2026-08-01T00:01:00.000Z');
+    `);
+    legacy.close();
+
+    const migrated = db();
+    const columns = migrated
+      .prepare("PRAGMA table_info(generation_jobs)")
+      .all() as Array<{ name: string; dflt_value: string | null }>;
+    const row = migrated
+      .prepare(
+        "SELECT currency,estimated_cost_micros,actual_cost_micros FROM generation_jobs WHERE id='legacy-job'",
+      )
+      .get() as {
+      currency: string;
+      estimated_cost_micros: number;
+      actual_cost_micros: number;
+    };
+
+    expect(columns.find((column) => column.name === "currency")?.dflt_value).toBe(
+      "'CNY'",
+    );
+    expect(row).toEqual({
+      currency: "CNY",
+      estimated_cost_micros: 210000,
+      actual_cost_micros: 210000,
+    });
   });
 });

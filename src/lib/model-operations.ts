@@ -165,6 +165,7 @@ export function updateModelRuntime(
     priority: number;
     timeoutMs: number;
     costPerImageMicros: number;
+    currency: string;
   },
 ) {
   const database = db();
@@ -180,7 +181,7 @@ export function updateModelRuntime(
     const changed =
       database
         .prepare(
-          "UPDATE model_configs SET encrypted_api_key=?,enabled=?,priority=?,timeout_ms=?,cost_per_image_micros=?,updated_at=? WHERE id=?",
+          "UPDATE model_configs SET encrypted_api_key=?,enabled=?,priority=?,timeout_ms=?,cost_per_image_micros=?,currency=?,updated_at=? WHERE id=?",
         )
         .run(
           encrypted,
@@ -188,6 +189,7 @@ export function updateModelRuntime(
           input.priority,
           input.timeoutMs,
           input.costPerImageMicros,
+          input.currency,
           new Date().toISOString(),
           id,
         ).changes > 0;
@@ -197,6 +199,7 @@ export function updateModelRuntime(
         priority: input.priority,
         timeoutMs: input.timeoutMs,
         costPerImageMicros: input.costPerImageMicros,
+        currency: input.currency,
         apiKeyChanged: Boolean(input.apiKey),
       });
     database.exec("COMMIT");
@@ -396,8 +399,8 @@ export function enqueueGeneration(
     const id = crypto.randomUUID();
     database
       .prepare(
-        `INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,error_code,attempts,queued_at)
-      VALUES(?,?,?,?, 'queued',?,?,0,NULL,0,?)`,
+        `INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,currency,error_code,attempts,queued_at)
+      VALUES(?,?,?,?, 'queued',?,?,0,?,NULL,0,?)`,
       )
       .run(
         id,
@@ -406,6 +409,7 @@ export function enqueueGeneration(
         model.id,
         variantCount,
         estimated,
+        model.currency,
         now,
       );
     database.exec("COMMIT");
@@ -552,12 +556,19 @@ export function listGenerationJobs() {
 export function costSummary() {
   const row = db()
     .prepare(
-      "SELECT SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) AS jobs,COALESCE(SUM(actual_cost_micros),0) AS total,COALESCE(SUM(CASE WHEN status='completed' THEN variant_count ELSE 0 END),0) AS images FROM generation_jobs",
+      "SELECT SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) AS jobs,COALESCE(SUM(CASE WHEN status='completed' THEN variant_count ELSE 0 END),0) AS images FROM generation_jobs",
     )
     .get() as ModelRow;
+  const totals = db()
+    .prepare(
+      "SELECT currency,COALESCE(SUM(actual_cost_micros),0) AS total FROM generation_jobs GROUP BY currency ORDER BY currency",
+    )
+    .all() as Array<{ currency: string; total: number }>;
   return {
     jobs: Number(row.jobs),
     images: Number(row.images),
-    totalCostMicros: Number(row.total),
+    costsByCurrency: Object.fromEntries(
+      totals.map((item) => [String(item.currency), Number(item.total)]),
+    ),
   };
 }

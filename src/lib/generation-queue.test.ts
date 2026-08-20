@@ -8,6 +8,8 @@ import {
   closeDatabaseForTest,
   db,
   getAuthUserById,
+  RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+  RUNNINGHUB_INTERNATIONAL_CURRENCY,
   RUNNINGHUB_INTERNATIONAL_ENDPOINT,
   type AuthUser,
 } from "./database";
@@ -145,6 +147,34 @@ describe("persistent generation queue", () => {
         }
       ).count,
     ).toBe(0);
+  });
+
+  it("snapshots the configured provider currency and exact three-image estimate", () => {
+    db()
+      .prepare(
+        "UPDATE model_configs SET provider='runninghub',model='rhart-image-n-g31-flash-lite',endpoint=?,cost_per_image_micros=?,currency=? WHERE id='demo-fixed'",
+      )
+      .run(
+        RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+        RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+        RUNNINGHUB_INTERNATIONAL_CURRENCY,
+      );
+    const item = task();
+    enqueuePersistentGeneration({
+      task: item,
+      user: queueUser,
+      ownerKey: `user:${queueUserId}`,
+      idempotencyKey: "request-usd-cost-snapshot",
+      sourceImagePath: null,
+      sourceExpiresAt: null,
+    });
+
+    const row = db()
+      .prepare(
+        "SELECT estimated_cost_micros,currency FROM generation_jobs WHERE task_id=?",
+      )
+      .get(item.id) as { estimated_cost_micros: number; currency: string };
+    expect(row).toEqual({ estimated_cost_micros: 45_000, currency: "USD" });
   });
 
   it("deduplicates enqueue and completes exactly once", async () => {

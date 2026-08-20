@@ -15,6 +15,7 @@ import {
   listGenerationJobs,
   listModelConfigs,
 } from "@/lib/model-operations";
+import { formatCost, formatCostSummary } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ export default async function ModelsPage({
   const models = listModelConfigs();
   const jobs = listGenerationJobs();
   const cost = costSummary();
+  const costTotals = Object.entries(cost.costsByCurrency)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([currency, micros]) => formatCostSummary(Number(micros), currency));
   const created = (await searchParams).created === "1";
   return (
     <main className="min-h-screen bg-[#102a25] p-5 text-white md:p-10">
@@ -53,7 +57,7 @@ export default async function ModelsPage({
           <Metric
             icon={CircleDollarSign}
             label="累计成本"
-            value={`¥${(cost.totalCostMicros / 1_000_000).toFixed(4)}`}
+            value={costTotals.length > 0 ? costTotals.join(" · ") : "—"}
           />
         </div>
         <div className="mt-7 grid gap-7 lg:grid-cols-[1.15fr_.85fr]">
@@ -95,7 +99,7 @@ export default async function ModelsPage({
                     <span>超时 {model.timeoutMs}ms</span>
                     <span>密钥 {model.apiKeyMasked ?? "未配置"}</span>
                     <span>
-                      每张 ¥{(model.costPerImageMicros / 1_000_000).toFixed(4)}
+                      每张 {formatCost(model.costPerImageMicros, model.currency)}
                     </span>
                   </div>
                 </Link>
@@ -143,13 +147,13 @@ export default async function ModelsPage({
                 />
               </div>
               <Input
-                name="costPerImageYuan"
+                name="costPerImage"
                 type="number"
                 min="0"
                 max="100"
                 step="0.0001"
                 defaultValue="0"
-                placeholder="每张成本，如 0.07"
+                placeholder="每张金额，如 0.015"
               />
               <select
                 name="currency"
@@ -208,9 +212,9 @@ export default async function ModelsPage({
                       <td className="p-4">{String(job.status)}</td>
                       <td className="p-4">{String(job.variant_count)}</td>
                       <td className="p-4">
-                        ¥
-                        {(Number(job.actual_cost_micros) / 1_000_000).toFixed(
-                          4,
+                        {formatCost(
+                          Number(job.actual_cost_micros),
+                          String(job.currency ?? "CNY"),
                         )}
                       </td>
                       <td className="p-4 text-white/50">

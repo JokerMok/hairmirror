@@ -9,6 +9,7 @@ import {
   failGenerationJob,
   resetUserFreePreview,
   startGenerationJob,
+  updateModelRuntime,
 } from "./model-operations";
 import { hashPassword } from "./auth";
 
@@ -30,11 +31,57 @@ describe("generation cost accounting", () => {
     failGenerationJob(job.id, "MODEL_FAILED", 60_000);
     const row = db()
       .prepare(
-        "SELECT status,actual_cost_micros FROM generation_jobs WHERE id=?",
+        "SELECT status,actual_cost_micros,currency FROM generation_jobs WHERE id=?",
       )
-      .get(job.id) as { status: string; actual_cost_micros: number };
-    expect(row).toMatchObject({ status: "failed", actual_cost_micros: 60_000 });
-    expect(costSummary().totalCostMicros).toBe(60_000);
+      .get(job.id) as {
+      status: string;
+      actual_cost_micros: number;
+      currency: string;
+    };
+    expect(row).toMatchObject({
+      status: "failed",
+      actual_cost_micros: 60_000,
+      currency: "CNY",
+    });
+    expect(costSummary().costsByCurrency).toEqual({ CNY: 60_000 });
+  });
+
+  it("groups historical and new job costs by their own currency", () => {
+    const cnyJob = enqueueGeneration(crypto.randomUUID(), null, 3);
+    startGenerationJob(cnyJob.id);
+    failGenerationJob(cnyJob.id, "MODEL_FAILED", 60_000);
+
+    db()
+      .prepare(
+        "UPDATE model_configs SET cost_per_image_micros=15000,currency='USD' WHERE id='demo-fixed'",
+      )
+      .run();
+    const usdJob = enqueueGeneration(crypto.randomUUID(), null, 3);
+    startGenerationJob(usdJob.id);
+    failGenerationJob(usdJob.id, "MODEL_FAILED", 45_000);
+
+    expect(costSummary().costsByCurrency).toEqual({
+      CNY: 60_000,
+      USD: 45_000,
+    });
+  });
+
+  it("updates the model amount and currency together", () => {
+    expect(
+      updateModelRuntime("demo-fixed", {
+        enabled: true,
+        priority: 999,
+        timeoutMs: 5_000,
+        costPerImageMicros: 15_000,
+        currency: "USD",
+      }),
+    ).toBe(true);
+    const row = db()
+      .prepare(
+        "SELECT cost_per_image_micros,currency FROM model_configs WHERE id='demo-fixed'",
+      )
+      .get() as { cost_per_image_micros: number; currency: string };
+    expect(row).toEqual({ cost_per_image_micros: 15_000, currency: "USD" });
   });
 });
 

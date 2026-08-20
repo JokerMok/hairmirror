@@ -8,6 +8,8 @@ export const RUNNINGHUB_CHINA_ENDPOINT =
   "https://www.runninghub.cn/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image";
 export const RUNNINGHUB_INTERNATIONAL_ENDPOINT =
   "https://www.runninghub.ai/openapi/v2/rhart-image-n-g31-flash-lite/image-to-image";
+export const RUNNINGHUB_INTERNATIONAL_CURRENCY = "USD";
+export const RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS = 15_000;
 
 export interface AuthUser {
   id: string;
@@ -105,6 +107,7 @@ function createDatabase(path: string) {
       variant_count INTEGER NOT NULL,
       estimated_cost_micros INTEGER NOT NULL DEFAULT 0,
       actual_cost_micros INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'CNY',
       error_code TEXT,
       attempts INTEGER NOT NULL DEFAULT 0,
       queued_at TEXT NOT NULL,
@@ -402,6 +405,13 @@ function createDatabase(path: string) {
   for (const [name, statement] of consultationMigrations) {
     if (!consultationColumns.some((column) => column.name === name)) database.exec(statement);
   }
+  const generationJobColumns = database
+    .prepare("PRAGMA table_info(generation_jobs)")
+    .all() as Array<{ name: string }>;
+  if (!generationJobColumns.some((column) => column.name === "currency"))
+    database.exec(
+      "ALTER TABLE generation_jobs ADD COLUMN currency TEXT NOT NULL DEFAULT 'CNY'",
+    );
   database.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL",
   );
@@ -422,9 +432,15 @@ function createDatabase(path: string) {
     .prepare(
       `INSERT OR IGNORE INTO model_configs
     (id,name,provider,model,endpoint,encrypted_api_key,enabled,priority,timeout_ms,cost_per_image_micros,currency,created_at,updated_at)
-    VALUES('runninghub-g31-flash-lite','RunningHub G31 Flash Lite','runninghub','rhart-image-n-g31-flash-lite',?,NULL,0,100,180000,0,'CNY',?,?)`,
+    VALUES('runninghub-g31-flash-lite','RunningHub G31 Flash Lite','runninghub','rhart-image-n-g31-flash-lite',?,NULL,0,100,180000,?,?,?,?)`,
     )
-    .run(RUNNINGHUB_INTERNATIONAL_ENDPOINT, now, now);
+    .run(
+      RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+      RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+      RUNNINGHUB_INTERNATIONAL_CURRENCY,
+      now,
+      now,
+    );
   database
     .prepare(
       "UPDATE model_configs SET endpoint=?,updated_at=? WHERE id=? AND endpoint=?",
@@ -434,6 +450,19 @@ function createDatabase(path: string) {
       now,
       "runninghub-g31-flash-lite",
       RUNNINGHUB_CHINA_ENDPOINT,
+    );
+  database
+    .prepare(
+      "UPDATE model_configs SET cost_per_image_micros=?,currency=?,updated_at=? WHERE id=? AND endpoint=? AND (cost_per_image_micros<>? OR currency<>?)",
+    )
+    .run(
+      RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+      RUNNINGHUB_INTERNATIONAL_CURRENCY,
+      now,
+      "runninghub-g31-flash-lite",
+      RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+      RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
+      RUNNINGHUB_INTERNATIONAL_CURRENCY,
     );
   return database;
 }
