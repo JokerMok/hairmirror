@@ -14,6 +14,8 @@ export interface HairstyleTemplate {
   goal: HairGoal[];
   maintenance: "低" | "中" | "高";
   conditions: string;
+  /** The style may require perming, colouring, or heat-curling tools. */
+  requiresTreatment?: boolean;
   description: string;
   visual: "crop" | "waves" | "layer";
   color: string;

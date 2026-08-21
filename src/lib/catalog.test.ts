@@ -7,6 +7,7 @@ describe("recommendTemplates", () => {
       audience: "feminine",
       targetLength: "long",
       goal: "younger",
+      chemical: true,
     });
     expect(result).toHaveLength(3);
     expect(result.every((item) => item.length === "long")).toBe(true);
@@ -16,6 +17,7 @@ describe("recommendTemplates", () => {
       audience: "masculine",
       targetLength: "short",
       goal: "fresh",
+      chemical: true,
     });
     expect(result.some((item) => item.id === "textured-crop")).toBe(true);
   });
@@ -26,9 +28,22 @@ describe("recommendTemplates", () => {
         audience: "neutral",
         targetLength,
         goal: "fashion",
+        chemical: true,
       });
       expect(result).toHaveLength(3);
       expect(result.every((item) => item.length === targetLength)).toBe(true);
     },
   );
+
+  it("excludes styles that may require treatment when the user chooses cut only", () => {
+    const result = recommendTemplates({
+      audience: "neutral",
+      targetLength: "medium",
+      goal: "volume",
+      chemical: false,
+    });
+
+    expect(result.some((item) => item.id === "soft-waves")).toBe(false);
+    expect(result.every((item) => !item.requiresTreatment)).toBe(true);
+  });
 });

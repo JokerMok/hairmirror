@@ -41,6 +41,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     goal: ["younger", "fashion", "volume"],
     maintenance: "中",
     conditions: "直发可能需要烫发或卷发工具",
+    requiresTreatment: true,
     description: "柔化面部轮廓，增加自然空气感。",
     visual: "waves",
     color: "#3d2b22",
@@ -131,13 +132,23 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
   },
 ];
 
+export function isTemplateCompatibleWithChemicalPreference(
+  template: HairstyleTemplate,
+  chemical: boolean = true,
+) {
+  return chemical || !template.requiresTreatment;
+}
+
 export function recommendTemplates(preferences: {
   audience: string;
   targetLength: string;
   goal: HairGoal;
+  chemical?: boolean;
 }) {
   const candidates = HAIRSTYLES.filter(
-    (item) => item.length === preferences.targetLength,
+    (item) =>
+      item.length === preferences.targetLength &&
+      isTemplateCompatibleWithChemicalPreference(item, preferences.chemical),
   );
   const scored = candidates.map((item) => ({
     item,

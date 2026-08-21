@@ -13,13 +13,20 @@ import {
   createConfiguredConsultationProvider,
 } from "@/lib/consultation-provider";
 import { getActiveModelConfig } from "@/lib/model-operations";
-import { HAIRSTYLES } from "@/lib/catalog";
+import {
+  HAIRSTYLES,
+  isTemplateCompatibleWithChemicalPreference,
+  recommendTemplates,
+} from "@/lib/catalog";
 import { readSourceImage } from "@/lib/source-storage";
 import { enqueueConsultationRecommendations } from "@/lib/generation-queue";
 import {
   DEFAULT_DESIGN_PREFERENCES,
   type Consultation,
+  type ConsultationBrief,
   type ConsultationStatus,
+  type HairGoal,
+  type HairLength,
   type Recommendation,
   type StoredDesignTask,
 } from "@/lib/types";
@@ -105,20 +112,49 @@ export function selectRecommendation(item: Consultation, id: string) {
 }
 export function archive(item: Consultation) { assertStatusTransition(item.status,"archived"); db().prepare("UPDATE consultations SET status='archived',updated_at=? WHERE id=?").run(new Date().toISOString(),item.id); return findConsultation(item.id)!; }
 
-const recommendationTemplate = (recommendation: Recommendation, index: number) => {
+function consultationBriefFromAnalysis(item: Consultation): ConsultationBrief | undefined {
+  const value = item.analysisResult?.consultationBrief;
+  if (!value || typeof value !== "object") return undefined;
+  const brief = value as Record<string, unknown>;
+  const lengths: HairLength[] = ["short", "medium", "long"];
+  const goals: HairGoal[] = ["fresh", "younger", "volume", "professional", "fashion"];
+  if (!lengths.includes(brief.currentLength as HairLength) || !lengths.includes(brief.targetLength as HairLength) || !goals.includes(brief.goal as HairGoal)) return undefined;
+  return {
+    currentLength: brief.currentLength as HairLength,
+    targetLength: brief.targetLength as HairLength,
+    goal: brief.goal as HairGoal,
+    dailyMinutes: typeof brief.dailyMinutes === "number" && Number.isFinite(brief.dailyMinutes) ? brief.dailyMinutes : 10,
+    chemical: brief.chemical === true,
+  };
+}
+
+const cutOnlyFallback = (index: number, brief: ConsultationBrief) => {
+  const candidates = recommendTemplates({
+    audience: "neutral",
+    targetLength: brief.targetLength,
+    goal: brief.goal,
+    chemical: brief.chemical,
+  });
+  return candidates[index % candidates.length] ?? HAIRSTYLES.find((template) => !template.requiresTreatment)!;
+};
+
+const recommendationTemplate = (recommendation: Recommendation, index: number, brief?: ConsultationBrief) => {
   const name = recommendation.styleName.toLocaleLowerCase();
   const exact = HAIRSTYLES.find((template) => template.name.toLocaleLowerCase() === name);
-  if (exact) return exact;
-  if (name.includes("crop") || name.includes("碎")) return HAIRSTYLES.find((template) => template.id === "textured-crop")!;
-  if (name.includes("side") || name.includes("part") || name.includes("侧分")) return HAIRSTYLES.find((template) => template.id === "clean-side")!;
-  if (name.includes("bob") || name.includes("波波")) return HAIRSTYLES.find((template) => template.id === "french-bob")!;
-  if (name.includes("wave") || name.includes("curl") || name.includes("卷")) return HAIRSTYLES.find((template) => template.id === "soft-waves")!;
-  if (name.includes("long") || name.includes("长发")) return HAIRSTYLES.find((template) => template.id === "long-layer")!;
-  return [
+  let selected = exact;
+  if (!selected && (name.includes("crop") || name.includes("碎"))) selected = HAIRSTYLES.find((template) => template.id === "textured-crop");
+  if (!selected && (name.includes("side") || name.includes("part") || name.includes("侧分"))) selected = HAIRSTYLES.find((template) => template.id === "clean-side");
+  if (!selected && (name.includes("bob") || name.includes("波波"))) selected = HAIRSTYLES.find((template) => template.id === "french-bob");
+  if (!selected && (name.includes("wave") || name.includes("curl") || name.includes("卷"))) selected = HAIRSTYLES.find((template) => template.id === "soft-waves");
+  if (!selected && (name.includes("long") || name.includes("长发"))) selected = HAIRSTYLES.find((template) => template.id === "long-layer");
+  selected ??= [
     HAIRSTYLES.find((template) => template.id === "textured-crop")!,
     HAIRSTYLES.find((template) => template.id === "clean-side")!,
     HAIRSTYLES.find((template) => template.id === "french-bob")!,
   ][index % 3];
+  return !brief || isTemplateCompatibleWithChemicalPreference(selected, brief.chemical)
+    ? selected
+    : cutOnlyFallback(index, brief);
 };
 
 export function enqueueConsultationGeneration(item: Consultation, user: AuthUser) {
@@ -132,12 +168,13 @@ export function enqueueConsultationGeneration(item: Consultation, user: AuthUser
     : active.provider === "local"
       ? "demo-fixed"
       : "mock";
+  const brief = consultationBriefFromAnalysis(item);
   return enqueueConsultationRecommendations({
     consultationId: item.id,
     user,
     ownerKey: `user:${user.id}`,
     recommendations: item.recommendations.map((recommendation, index) => {
-      const template = recommendationTemplate(recommendation, index);
+      const template = recommendationTemplate(recommendation, index, brief);
       const task: StoredDesignTask = {
         id: randomUUID(),
         ownerSessionId: `consultation:${item.id}`,
@@ -145,7 +182,7 @@ export function enqueueConsultationGeneration(item: Consultation, user: AuthUser
         status: "queued",
         createdAt: new Date().toISOString(),
         generationMode,
-        preferences: { ...DEFAULT_DESIGN_PREFERENCES },
+        preferences: { ...DEFAULT_DESIGN_PREFERENCES, ...(brief ?? {}) },
         variants: [{
           id: randomUUID(),
           template,
