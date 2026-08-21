@@ -16,6 +16,7 @@ import {
   operationsHealth,
 } from "@/lib/operations";
 import { ADMIN_COOKIE, isAdminCookieValue } from "@/lib/session";
+import { AdminJobAssets } from "@/components/admin-job-assets";
 
 export const dynamic = "force-dynamic";
 export default async function OperationsPage() {
@@ -98,6 +99,7 @@ export default async function OperationsPage() {
                 <tr>
                   <th className="p-4">任务</th>
                   <th className="p-4">状态</th>
+                  <th className="p-4">图片</th>
                   <th className="p-4">尝试</th>
                   <th className="p-4">错误</th>
                   <th className="p-4">操作</th>
@@ -110,6 +112,12 @@ export default async function OperationsPage() {
                       {String(job.task_id).slice(0, 8)}
                     </td>
                     <td className="p-4">{String(job.status)}</td>
+                    <td className="p-4">
+                      <AdminJobAssets
+                        assetIds={job.generated_asset_ids}
+                        variantCount={job.variant_count}
+                      />
+                    </td>
                     <td className="p-4">
                       {String(job.attempts)}/{String(job.max_attempts ?? 3)}
                     </td>

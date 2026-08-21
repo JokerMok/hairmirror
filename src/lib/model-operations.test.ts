@@ -90,6 +90,39 @@ describe("generation cost accounting", () => {
       .get() as { cost_per_image_micros: number; currency: string };
     expect(row).toEqual({ cost_per_image_micros: 15_000, currency: "USD" });
   });
+
+  it("lists only unexpired generated assets for admin previews", () => {
+    const taskId = crypto.randomUUID();
+    const job = enqueueGeneration(taskId, null, 3);
+    const activeAssetId = crypto.randomUUID();
+    const expiredAssetId = crypto.randomUUID();
+    const insert = db().prepare(
+      "INSERT INTO generated_assets(id,task_id,owner_session_id,user_id,file_path,mime_type,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)",
+    );
+    insert.run(
+      activeAssetId,
+      taskId,
+      "session",
+      null,
+      "/tmp/active.jpg",
+      "image/jpeg",
+      new Date().toISOString(),
+      Date.now() + 60_000,
+    );
+    insert.run(
+      expiredAssetId,
+      taskId,
+      "session",
+      null,
+      "/tmp/expired.jpg",
+      "image/jpeg",
+      new Date().toISOString(),
+      Date.now() - 1,
+    );
+
+    const row = listGenerationJobs().find((item) => item.id === job.id);
+    expect(row?.generated_asset_ids).toBe(activeAssetId);
+  });
 });
 
 describe("admin free preview reset", () => {

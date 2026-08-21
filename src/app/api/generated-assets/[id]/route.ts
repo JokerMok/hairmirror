@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE, getUserByToken } from "@/lib/auth";
 import { db } from "@/lib/database";
-import { SESSION_COOKIE } from "@/lib/session";
+import { isAdminRequest, SESSION_COOKIE } from "@/lib/session";
 
 export const runtime = "nodejs";
 export async function GET(
@@ -16,7 +16,10 @@ export async function GET(
     .prepare("SELECT * FROM generated_assets WHERE id=? AND expires_at>?")
     .get(id, Date.now()) as Record<string, unknown> | undefined;
   if (!asset) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  const user = getUserByToken(request.cookies.get(AUTH_COOKIE)?.value);
+  const admin = isAdminRequest(request);
+  const user = admin
+    ? null
+    : getUserByToken(request.cookies.get(AUTH_COOKIE)?.value);
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   let consultationAccess = false;
   if (user) {
@@ -47,8 +50,11 @@ export async function GET(
     }
   }
   if (
-    (asset.user_id && user?.id !== asset.user_id && !consultationAccess) ||
-    (!asset.user_id && sessionId !== asset.owner_session_id && !consultationAccess)
+    !admin &&
+    ((asset.user_id && user?.id !== asset.user_id && !consultationAccess) ||
+      (!asset.user_id &&
+        sessionId !== asset.owner_session_id &&
+        !consultationAccess))
   )
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   try {

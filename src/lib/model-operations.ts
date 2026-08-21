@@ -584,9 +584,11 @@ export function cancelGenerationJob(id: string, actualCostMicros = 0) {
 export function listGenerationJobs() {
   return db()
     .prepare(
-      `SELECT j.*,m.name AS model_name,u.name AS user_name,p.max_attempts,p.last_error,p.cancel_requested,p.available_at FROM generation_jobs j LEFT JOIN model_configs m ON m.id=j.model_config_id LEFT JOIN users u ON u.id=j.user_id LEFT JOIN generation_job_payloads p ON p.job_id=j.id ORDER BY j.queued_at DESC LIMIT 100`,
+      `SELECT j.*,m.name AS model_name,u.name AS user_name,p.max_attempts,p.last_error,p.cancel_requested,p.available_at,
+        (SELECT GROUP_CONCAT(a.id) FROM generated_assets a WHERE a.task_id=j.task_id AND a.expires_at>?) AS generated_asset_ids
+       FROM generation_jobs j LEFT JOIN model_configs m ON m.id=j.model_config_id LEFT JOIN users u ON u.id=j.user_id LEFT JOIN generation_job_payloads p ON p.job_id=j.id ORDER BY j.queued_at DESC LIMIT 100`,
     )
-    .all() as ModelRow[];
+    .all(Date.now()) as ModelRow[];
 }
 
 export function costSummary() {

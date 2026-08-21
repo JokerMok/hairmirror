@@ -16,6 +16,7 @@ import {
   listModelConfigs,
 } from "@/lib/model-operations";
 import { formatCost, formatCostSummary } from "@/lib/currency";
+import { AdminJobAssets } from "@/components/admin-job-assets";
 
 export const dynamic = "force-dynamic";
 
@@ -210,7 +211,12 @@ export default async function ModelsPage({
                       </td>
                       <td className="p-4">{String(job.model_name ?? "-")}</td>
                       <td className="p-4">{String(job.status)}</td>
-                      <td className="p-4">{String(job.variant_count)}</td>
+                      <td className="p-4">
+                        <AdminJobAssets
+                          assetIds={job.generated_asset_ids}
+                          variantCount={job.variant_count}
+                        />
+                      </td>
                       <td className="p-4">
                         {formatCost(
                           Number(job.actual_cost_micros),
