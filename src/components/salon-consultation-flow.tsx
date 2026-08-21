@@ -10,6 +10,7 @@ import type {
   ConsultationBrief,
   Consultation,
   ConsultationGenerationJob,
+  HairColorPreset,
   HairGoal,
   HairLength,
   Recommendation,
@@ -30,7 +31,8 @@ const defaultBrief: ConsultationBrief = {
   targetLength: "medium",
   goal: "fresh",
   dailyMinutes: 10,
-  chemical: false,
+  treatmentMode: "cut_only",
+  colorMode: "preserve",
 };
 
 const lengthLabels: Record<HairLength, string> = { short: "Short", medium: "Medium", long: "Long" };
@@ -40,6 +42,19 @@ const goalLabels: Record<HairGoal, string> = {
   volume: "More volume",
   professional: "Professional",
   fashion: "Fashion-forward",
+};
+const treatmentLabels: Record<ConsultationBrief["treatmentMode"], string> = {
+  cut_only: "Cut only",
+  perm_allowed: "Perm allowed",
+};
+const colorLabels: Record<HairColorPreset, string> = {
+  black: "Black",
+  dark_brown: "Dark brown",
+  brown: "Brown",
+  blonde: "Blonde",
+  red: "Red",
+  gray: "Gray",
+  custom: "Custom",
 };
 
 async function readJson(response: Response) {
@@ -336,7 +351,26 @@ export default function SalonConsultationFlow({ initialConsultationId, mode = "s
                   <input aria-label="Daily styling time" type="range" min="0" max="30" step="5" value={brief.dailyMinutes} onChange={(event) => setBrief({ ...brief, dailyMinutes: Number(event.target.value) })} className="mt-3 w-full accent-emerald-700" />
                 </label>
               </div>
-              <label className="mt-3 flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={brief.chemical} onChange={(event) => setBrief({ ...brief, chemical: event.target.checked })} className="mt-1 size-4 accent-emerald-700" />Client is open to perm or colour.</label>
+              <label className="mt-3 text-sm text-slate-700">Hair treatment
+                <select value={brief.treatmentMode} onChange={(event) => setBrief({ ...brief, treatmentMode: event.target.value as ConsultationBrief["treatmentMode"] })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                  {Object.entries(treatmentLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              <label className="mt-3 text-sm text-slate-700">Hair color
+                <select value={brief.colorMode} onChange={(event) => setBrief({ ...brief, colorMode: event.target.value as ConsultationBrief["colorMode"], targetHairColor: undefined, customHairColor: undefined })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                  <option value="preserve">Preserve original</option>
+                  <option value="change">Change color</option>
+                </select>
+              </label>
+              {brief.colorMode === "change" && <>
+                <label className="mt-3 text-sm text-slate-700">Target hair color
+                  <select value={brief.targetHairColor ?? ""} onChange={(event) => setBrief({ ...brief, targetHairColor: event.target.value ? event.target.value as HairColorPreset : undefined, customHairColor: event.target.value === "custom" ? brief.customHairColor : undefined })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                    <option value="">Choose a target color</option>
+                    {Object.entries(colorLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </label>
+                {brief.targetHairColor === "custom" && <input value={brief.customHairColor ?? ""} onChange={(event) => setBrief({ ...brief, customHairColor: event.target.value })} maxLength={80} placeholder="Describe the target color" className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />}
+              </>}
             </fieldset>
           </>}
           {!initialConsultationId && <label className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-3 text-sm leading-5 text-amber-950"><input type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} className="mt-1 size-4 accent-emerald-700" /><span>{mode === "stylist" ? "I confirm the client agreed to use this clear, front-facing photo of one person for hairstyle analysis. The photo is not used for model training." : "I agree to use this clear, front-facing photo of one person for hairstyle analysis. The photo is not used for model training and can be deleted with this consultation."}</span></label>}

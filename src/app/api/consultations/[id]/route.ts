@@ -22,7 +22,13 @@ import {
   requestConsultationRecommendationCancellation,
   retryConsultationRecommendation,
 } from "@/lib/generation-queue";
-import type { ConsultationBrief, HairGoal, HairLength } from "@/lib/types";
+import {
+  hasValidHairColorPreference,
+  normalizeConsultationBrief,
+  type ConsultationBrief,
+  type HairGoal,
+  type HairLength,
+} from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -85,7 +91,15 @@ function readConsultationBrief(value: unknown): ConsultationBrief | undefined {
   const dailyMinutes = typeof brief.dailyMinutes === "number" && Number.isFinite(brief.dailyMinutes)
     ? Math.max(0, Math.min(30, Math.round(brief.dailyMinutes / 5) * 5))
     : 10;
-  return { currentLength, targetLength, goal, dailyMinutes, chemical: brief.chemical === true };
+  const normalized = normalizeConsultationBrief({
+    ...brief,
+    currentLength,
+    targetLength,
+    goal,
+    dailyMinutes,
+  });
+  if (!hasValidHairColorPreference(normalized)) throw new Error("INVALID_CONSULTATION_INPUT");
+  return normalized;
 }
 
 function scheduleInlineWorker() {

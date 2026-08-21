@@ -4,6 +4,17 @@
 
 V0.3 以发型咨询为核心。`salons`、`consultations` 与 `recommendations` 是新增领域表，旧的设计任务、生成任务和账单表保持原有语义。
 
+## 偏好契约
+
+咨询流程把发型处理方式和发色意图拆成独立字段：
+
+- `treatmentMode`：`cut_only` 或 `perm_allowed`。
+- `colorMode`：`preserve` 或 `change`，默认 `preserve`。
+- `targetHairColor`：预设发色或 `custom`；当 `colorMode` 为 `change` 时必填。
+- `customHairColor`：仅当 `targetHairColor` 为 `custom` 时必填。
+
+同一份偏好快照会在付费生成任务入队前写入任务和咨询 JSON。缺少 `colorMode` 的历史数据按 `preserve` 读取；旧 `chemical` 只映射到 `treatmentMode`，不会授权改变发色。RunningHub 会在每个模板描述前、提示词结尾分别接收发色保持或明确目标发色约束。
+
 ## 数据模型
 
 | 表 | 关键字段 | 约束 |

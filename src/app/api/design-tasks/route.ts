@@ -20,6 +20,8 @@ import { persistSourceImage, removeSourceImage } from "@/lib/source-storage";
 import { evaluateOperationalAlerts, notifyOpenAlerts } from "@/lib/operations";
 import { billingProvider } from "@/lib/billing";
 import { refreshGumroadLicense } from "@/lib/gumroad-billing";
+import { normalizeDesignPreferences } from "@/lib/types";
+import { designPreferencesSchema } from "@/lib/preference-schema";
 
 export const runtime = "nodejs";
 const schema = z.object({
@@ -29,21 +31,7 @@ const schema = z.object({
     .max(12_000_000)
     .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/)
     .optional(),
-  preferences: z.object({
-    audience: z.enum(["masculine", "feminine", "neutral"]),
-    currentLength: z.enum(["short", "medium", "long"]),
-    targetLength: z.enum(["short", "medium", "long"]),
-    goal: z.enum(["fresh", "younger", "volume", "professional", "fashion"]),
-    texture: z.enum(["straight", "wavy", "curly", "coily"]).default("straight"),
-    density: z.enum(["fine", "medium", "thick"]).default("medium"),
-    faceShape: z
-      .enum(["auto", "oval", "round", "square", "heart", "long"])
-      .default("auto"),
-    fringe: z.enum(["open", "avoid", "soft", "full"]).default("open"),
-    parting: z.enum(["auto", "center", "side"]).default("auto"),
-    chemical: z.boolean(),
-    dailyMinutes: z.number().min(0).max(60),
-  }),
+  preferences: designPreferencesSchema,
 });
 const toPublicTask = (task: StoredDesignTask) => ({
   id: task.id,
@@ -110,7 +98,8 @@ export async function POST(request: NextRequest) {
   if (user && billingProvider() === "gumroad")
     await refreshGumroadLicense(user.id);
   const idempotencyKey = validIdempotencyKey ?? crypto.randomUUID();
-  const templates = recommendTemplates(parsed.data.preferences);
+  const preferences = normalizeDesignPreferences(parsed.data.preferences);
+  const templates = recommendTemplates(preferences);
   if (templates.length !== HAIRSTYLE_DIRECTION_COUNT)
     return respond({ error: "RECOMMENDATIONS_UNAVAILABLE" }, 503);
   const taskId = crypto.randomUUID();
@@ -126,7 +115,7 @@ export async function POST(request: NextRequest) {
     createdAt: new Date().toISOString(),
     ownerSessionId: sessionId,
     userId: user?.id ?? null,
-    preferences: parsed.data.preferences,
+    preferences,
     generationMode:
       active.provider === "runninghub"
         ? "api"
@@ -136,7 +125,7 @@ export async function POST(request: NextRequest) {
     variants: templates.map((template) => ({
       id: crypto.randomUUID(),
       template,
-      reason: `符合“${GOAL_LABELS[parsed.data.preferences.goal]}”诉求，并匹配目标发长。`,
+      reason: `符合“${GOAL_LABELS[preferences.goal]}”诉求，并匹配目标发长。`,
     })),
   };
   let queued: ReturnType<typeof enqueuePersistentGeneration>;

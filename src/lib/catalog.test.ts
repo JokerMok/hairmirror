@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HAIRSTYLE_DIRECTION_COUNT, recommendTemplates } from "./catalog";
+import { HAIRSTYLES, HAIRSTYLE_DIRECTION_COUNT, recommendTemplates } from "./catalog";
 
 describe("recommendTemplates", () => {
   it("returns three ranked templates", () => {
@@ -7,7 +7,7 @@ describe("recommendTemplates", () => {
       audience: "feminine",
       targetLength: "long",
       goal: "younger",
-      chemical: true,
+      treatmentMode: "perm_allowed",
     });
     expect(result).toHaveLength(HAIRSTYLE_DIRECTION_COUNT);
     expect(result.every((item) => item.length === "long")).toBe(true);
@@ -17,7 +17,7 @@ describe("recommendTemplates", () => {
       audience: "masculine",
       targetLength: "short",
       goal: "fresh",
-      chemical: true,
+      treatmentMode: "perm_allowed",
     });
     expect(result.some((item) => item.id === "textured-crop")).toBe(true);
   });
@@ -28,7 +28,7 @@ describe("recommendTemplates", () => {
         audience: "neutral",
         targetLength,
         goal: "fashion",
-        chemical: true,
+        treatmentMode: "perm_allowed",
       });
       expect(result).toHaveLength(HAIRSTYLE_DIRECTION_COUNT);
       expect(result.every((item) => item.length === targetLength)).toBe(true);
@@ -40,13 +40,13 @@ describe("recommendTemplates", () => {
       audience: "neutral",
       targetLength: "medium",
       goal: "volume",
-      chemical: false,
+      treatmentMode: "cut_only",
     });
 
     expect(result).toHaveLength(HAIRSTYLE_DIRECTION_COUNT);
     expect(result.some((item) => item.id === "soft-waves")).toBe(false);
     expect(result.some((item) => item.id === "straight-layer")).toBe(true);
-    expect(result.every((item) => !item.requiresTreatment)).toBe(true);
+    expect(result.every((item) => !item.requiresPermOrHeat)).toBe(true);
   });
 
   it("returns exactly three unique safe templates for every legal preference combination", () => {
@@ -57,15 +57,39 @@ describe("recommendTemplates", () => {
     for (const audience of audiences) {
       for (const targetLength of targetLengths) {
         for (const goal of goals) {
-          for (const chemical of [false, true]) {
-            const result = recommendTemplates({ audience, targetLength, goal, chemical });
+          for (const treatmentMode of ["cut_only", "perm_allowed"] as const) {
+            const result = recommendTemplates({ audience, targetLength, goal, treatmentMode });
             expect(result).toHaveLength(HAIRSTYLE_DIRECTION_COUNT);
             expect(new Set(result.map((item) => item.id)).size).toBe(HAIRSTYLE_DIRECTION_COUNT);
             expect(result.every((item) => item.length === targetLength)).toBe(true);
-            if (!chemical) expect(result.every((item) => !item.requiresTreatment)).toBe(true);
+            if (treatmentMode === "cut_only") expect(result.every((item) => !item.requiresPermOrHeat)).toBe(true);
           }
         }
       }
+    }
+  });
+
+  it("keeps color independent from template selection", () => {
+    const cutOnly = recommendTemplates({
+      audience: "neutral",
+      targetLength: "medium",
+      goal: "volume",
+      treatmentMode: "cut_only",
+    });
+    const permAllowed = recommendTemplates({
+      audience: "neutral",
+      targetLength: "medium",
+      goal: "volume",
+      treatmentMode: "perm_allowed",
+    });
+    expect(cutOnly.every((item) => !item.requiresPermOrHeat)).toBe(true);
+    expect(permAllowed.some((item) => item.id === "soft-waves")).toBe(true);
+  });
+
+  it("does not include implicit dye instructions in any template", () => {
+    for (const template of HAIRSTYLES) {
+      const text = `${template.name} ${template.description} ${template.conditions}`;
+      expect(text).not.toMatch(/染发|漂发|挑染|发色|dye|bleach|highlight|recolor/i);
     }
   });
 });

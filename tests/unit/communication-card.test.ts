@@ -32,4 +32,23 @@ describe("communication card", () => {
     expect(markdown).not.toContain("source.jpg");
     expect(markdown).not.toContain("stylist-1");
   });
+
+  it("includes independent treatment and color preferences", () => {
+    const item = consultation();
+    item.analysisResult = {
+      consultationBrief: {
+        currentLength: "short",
+        targetLength: "short",
+        goal: "fresh",
+        chemical: true,
+        dailyMinutes: 5,
+      },
+    };
+    const card = buildCommunicationCard(item);
+    expect(card.preferences).toEqual({
+      treatment: "Perm allowed",
+      color: "Preserve original",
+    });
+    expect(toCommunicationCardMarkdown(card)).toContain("Hair color: Preserve original");
+  });
 });

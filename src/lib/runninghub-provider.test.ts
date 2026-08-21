@@ -8,8 +8,12 @@ import {
   db,
   RUNNINGHUB_INTERNATIONAL_ENDPOINT,
 } from "./database";
-import { generateWithRunningHub } from "./runninghub-provider";
-import { DEFAULT_DESIGN_PREFERENCES } from "./types";
+import { buildRunningHubPrompt, generateWithRunningHub } from "./runninghub-provider";
+import {
+  DEFAULT_DESIGN_PREFERENCES,
+  hasValidHairColorPreference,
+  normalizeDesignPreferences,
+} from "./types";
 
 let directory = "";
 beforeEach(() => {
@@ -68,7 +72,7 @@ describe("RunningHub adapter", () => {
         timeoutMs: 5000,
         costPerImageMicros: 15_000,
       },
-      HAIRSTYLES.slice(0, 3),
+      recommendTemplates(DEFAULT_DESIGN_PREFERENCES),
       {
         taskId: crypto.randomUUID(),
         ownerSessionId: "test-session",
@@ -87,7 +91,9 @@ describe("RunningHub adapter", () => {
     expect(prompts).toHaveLength(3);
     expect(prompts[0]).toContain("原生发质直发");
     expect(prompts[0]).toContain("发量与粗细中等");
-    expect(prompts[0]).toContain("只能通过剪发和日常造型实现");
+    expect(prompts[0]).toContain("只能通过剪发和日常造型实现，不得烫发或依赖卷发工具");
+    expect(prompts[0]).toContain("除非用户明确指定目标发色，否则必须严格保持原图头发颜色");
+    expect(prompts[0]).toContain("Preserve the exact original hair color unless the user explicitly selected a target hair color");
     expect(prompts[0]).toContain("原图人物必须像素级保持同一身份");
     expect(prompts[0]).toContain("禁止美颜、磨皮、瘦脸、放大眼睛、改变妆容、年龄、性别或种族");
     expect(prompts[0]).toContain("背景、曝光和光线不得变化");
@@ -135,7 +141,7 @@ describe("RunningHub adapter", () => {
           audience: "neutral",
           targetLength: "medium",
           goal: "volume",
-          chemical: false,
+          treatmentMode: "cut_only",
         }),
         {
           taskId: crypto.randomUUID(),
@@ -149,7 +155,7 @@ describe("RunningHub adapter", () => {
             texture: "straight",
             parting: "center",
             dailyMinutes: 5,
-            chemical: false,
+            treatmentMode: "cut_only",
           },
           imageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
         },
@@ -200,7 +206,7 @@ describe("RunningHub adapter", () => {
           timeoutMs: 5000,
           costPerImageMicros: 15_000,
         },
-        HAIRSTYLES.slice(0, 3),
+        recommendTemplates(DEFAULT_DESIGN_PREFERENCES),
         {
           taskId,
           ownerSessionId: "test-session",
@@ -225,6 +231,41 @@ describe("RunningHub adapter", () => {
       ).count,
     ).toBe(0);
     expect(readdirSync(process.env.GENERATED_ASSETS_DIR!)).toHaveLength(0);
+  });
+
+  it("applies independent treatment and color rules to the base prompt", () => {
+    const cutOnlyPreserve = buildRunningHubPrompt(HAIRSTYLES[0], {
+      ...DEFAULT_DESIGN_PREFERENCES,
+      treatmentMode: "cut_only",
+      colorMode: "preserve",
+    });
+    expect(cutOnlyPreserve).toContain("不得烫发或依赖卷发工具");
+    expect(cutOnlyPreserve).toContain("不得染色、漂色、挑染");
+
+    const permPreserve = buildRunningHubPrompt(HAIRSTYLES[0], {
+      ...DEFAULT_DESIGN_PREFERENCES,
+      treatmentMode: "perm_allowed",
+      colorMode: "preserve",
+    });
+    expect(permPreserve).toContain("允许改变卷度或使用现实可实现的烫发");
+    expect(permPreserve).toContain("Preserve the exact original hair color");
+
+    const darkBrown = buildRunningHubPrompt(HAIRSTYLES[0], {
+      ...DEFAULT_DESIGN_PREFERENCES,
+      treatmentMode: "perm_allowed",
+      colorMode: "change",
+      targetHairColor: "dark_brown",
+    });
+    expect(darkBrown).toContain("用户指定的Dark brown");
+    expect(darkBrown).toContain("user-specified Dark brown only");
+    expect(darkBrown).not.toContain("Blonde");
+  });
+
+  it("treats legacy preferences as preserve-color and rejects change without a target", () => {
+    const legacy = normalizeDesignPreferences({ chemical: true });
+    expect(legacy.treatmentMode).toBe("perm_allowed");
+    expect(legacy.colorMode).toBe("preserve");
+    expect(hasValidHairColorPreference({ colorMode: "change" })).toBe(false);
   });
 
   it("preserves and sanitizes submit error code and message", async () => {

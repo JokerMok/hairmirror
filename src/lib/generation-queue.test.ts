@@ -40,7 +40,8 @@ function task(overrides: Partial<DesignPreferences> = {}): StoredDesignTask {
     currentLength: "short",
     targetLength: "short",
     goal: "fresh",
-    chemical: false,
+    treatmentMode: "cut_only",
+    colorMode: "preserve",
     dailyMinutes: 5,
     ...overrides,
   };
@@ -197,7 +198,15 @@ describe("persistent generation queue", () => {
     });
     expect(item.variants).toHaveLength(3);
     expect(new Set(item.variants.map((variant) => variant.template.id)).size).toBe(3);
-    expect(item.variants.every((variant) => !variant.template.requiresTreatment)).toBe(true);
+    expect(item.variants.every((variant) => !variant.template.requiresPermOrHeat)).toBe(true);
+    const storedTask = db()
+      .prepare("SELECT preferences_json FROM design_tasks WHERE id=?")
+      .get(item.id) as { preferences_json: string };
+    const preferenceSnapshot = JSON.parse(storedTask.preferences_json) as Record<string, unknown>;
+    expect(preferenceSnapshot).toMatchObject({
+      treatmentMode: "cut_only",
+      colorMode: "preserve",
+    });
     db()
       .prepare(
         "UPDATE model_configs SET cost_per_image_micros=70000,currency='CNY' WHERE id='demo-fixed'",

@@ -19,14 +19,14 @@ export default async function SalonPage() {
     : t("Create a consultation", "创建客户咨询");
   const workflow = zh
     ? [
-        ["01", "客户照片与要求", "上传正面照片，记录想变长短、打理时间和接受烫染程度。"],
+        ["01", "客户照片与要求", "上传正面照片，分别记录发型处理方式、发色偏好、目标发长和打理时间。"],
         ["02", "三种方向", "系统把模糊描述整理成三种可比较的发型轮廓。"],
         ["03", "一起筛选", "发型师和客户并排查看，保存最接近实际条件的一种。"],
         ["04", "执行要点", "确认长度、层次、刘海和日常打理要求。"],
         ["05", "沟通卡", "把选中的方向和注意事项发给客户或交给团队执行。"],
       ]
     : [
-        ["01", "Client photo and brief", "Upload a front-facing photo and capture length, styling time, and treatment constraints."],
+        ["01", "Client photo and brief", "Upload a front-facing photo and capture length, styling time, treatment mode, and color preference."],
         ["02", "Three directions", "Turn a vague request into three silhouettes that are easy to compare."],
         ["03", "Decide together", "Review the options with the client and save the direction that fits real conditions."],
         ["04", "Execution notes", "Confirm length, layers, fringe, and the upkeep the client will actually do."],

@@ -1,4 +1,9 @@
-import type { ConsultationBrief, DesignPreferences } from "@/lib/types";
+import {
+  normalizeConsultationBrief,
+  normalizeDesignPreferences,
+  type ConsultationBrief,
+  type DesignPreferences,
+} from "@/lib/types";
 
 export const STUDIO_DRAFT_KEY = "hairmirror:studio-draft:v1";
 export const SALON_DRAFT_KEY = "hairmirror:salon-draft:v1";
@@ -107,7 +112,7 @@ export async function loadStudioDraft() {
     if (draft) await deleteDraft(STUDIO_DRAFT_KEY);
     return null;
   }
-  return draft;
+  return { ...draft, preferences: normalizeDesignPreferences(draft.preferences) };
 }
 
 export function clearStudioDraft() {
@@ -124,7 +129,7 @@ export async function loadSalonDraft() {
     if (draft) await deleteDraft(SALON_DRAFT_KEY);
     return null;
   }
-  return draft;
+  return { ...draft, brief: normalizeConsultationBrief(draft.brief) };
 }
 
 export function clearSalonDraft() {

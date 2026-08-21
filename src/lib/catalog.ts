@@ -1,4 +1,4 @@
-import type { HairstyleTemplate, HairGoal } from "@/lib/types";
+import type { HairstyleTemplate, HairGoal, TreatmentMode } from "@/lib/types";
 
 export const GOAL_LABELS: Record<HairGoal, string> = {
   fresh: "清爽精神",
@@ -21,7 +21,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "适合短发基础，可用少量发泥整理",
     description: "顶部轻微纹理，轮廓干净，日常好打理。",
     visual: "crop",
-    color: "#30251f",
+    previewColor: "#30251f",
   },
   {
     id: "clean-side",
@@ -33,7 +33,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "需要顶部保留一定长度",
     description: "清晰但不过分刻板，适合通勤场景。",
     visual: "crop",
-    color: "#3a2920",
+    previewColor: "#3a2920",
   },
   {
     id: "soft-waves",
@@ -43,10 +43,10 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     goal: ["younger", "fashion", "volume"],
     maintenance: "中",
     conditions: "直发可能需要烫发或卷发工具",
-    requiresTreatment: true,
+    requiresPermOrHeat: true,
     description: "柔化面部轮廓，增加自然空气感。",
     visual: "waves",
-    color: "#3d2b22",
+    previewColor: "#3d2b22",
   },
   {
     id: "collar-layer",
@@ -58,7 +58,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "当前长度至少接近下颌",
     description: "层次轻盈，保留长度同时改善轮廓。",
     visual: "layer",
-    color: "#2d221e",
+    previewColor: "#2d221e",
   },
   {
     id: "long-layer",
@@ -70,7 +70,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "细软发需配合蓬松打理",
     description: "通过高低层次增加动感，避免厚重。",
     visual: "layer",
-    color: "#35231e",
+    previewColor: "#35231e",
   },
   {
     id: "french-bob",
@@ -82,7 +82,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "需接受下颌附近的明确长度",
     description: "轮廓利落，搭配自然刘海更柔和。",
     visual: "waves",
-    color: "#2a211d",
+    previewColor: "#2a211d",
   },
   {
     id: "air-bangs",
@@ -94,7 +94,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "刘海需要每日整理，油性发质维护频率更高",
     description: "保留长发气质，以轻刘海调整视觉重心。",
     visual: "layer",
-    color: "#3a2922",
+    previewColor: "#3a2922",
   },
   {
     id: "neutral-shag",
@@ -106,7 +106,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "后颈需保留长度，适合接受明显层次",
     description: "轮廓有辨识度，兼顾蓬松和轻盈。",
     visual: "layer",
-    color: "#29211d",
+    previewColor: "#29211d",
   },
   {
     id: "straight-layer",
@@ -118,7 +118,7 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "适合直发和中等长度，依靠剪裁形成轮廓，不需要烫发或卷发工具",
     description: "保留自然直发质感，以轻薄层次改善轮廓，日常只需简单梳理。",
     visual: "layer",
-    color: "#33251f",
+    previewColor: "#33251f",
   },
   {
     id: "long-soft-curl",
@@ -128,9 +128,10 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     goal: ["younger", "fashion", "volume"],
     maintenance: "中",
     conditions: "长度保持在胸口附近，以自然大弯增加蓬松感",
+    requiresPermOrHeat: true,
     description: "明确保留长发长度，只增加柔和大弯和轻盈层次。",
     visual: "waves",
-    color: "#38251f",
+    previewColor: "#38251f",
   },
   {
     id: "sleek-long",
@@ -142,27 +143,27 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     conditions: "长度保持在胸口附近，不剪成中长发或短发",
     description: "保留清晰长发轮廓，以面部两侧轻层次提升利落感。",
     visual: "layer",
-    color: "#30231f",
+    previewColor: "#30231f",
   },
 ];
 
-export function isTemplateCompatibleWithChemicalPreference(
+export function isTemplateCompatibleWithTreatmentMode(
   template: HairstyleTemplate,
-  chemical: boolean = true,
+  treatmentMode: TreatmentMode = "cut_only",
 ) {
-  return chemical || !template.requiresTreatment;
+  return treatmentMode === "perm_allowed" || !template.requiresPermOrHeat;
 }
 
 export function recommendTemplates(preferences: {
   audience: string;
   targetLength: string;
   goal: HairGoal;
-  chemical?: boolean;
+  treatmentMode?: TreatmentMode;
 }) {
   const candidates = HAIRSTYLES.filter(
     (item) =>
       item.length === preferences.targetLength &&
-      isTemplateCompatibleWithChemicalPreference(item, preferences.chemical),
+      isTemplateCompatibleWithTreatmentMode(item, preferences.treatmentMode),
   );
   const scored = candidates.map((item) => ({
     item,

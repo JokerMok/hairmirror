@@ -6,6 +6,27 @@ export type HairGoal =
   | "professional"
   | "fashion";
 
+export type TreatmentMode = "cut_only" | "perm_allowed";
+export type HairColorMode = "preserve" | "change";
+export type HairColorPreset =
+  | "black"
+  | "dark_brown"
+  | "brown"
+  | "blonde"
+  | "red"
+  | "gray"
+  | "custom";
+
+export const HAIR_COLOR_PRESETS: readonly HairColorPreset[] = [
+  "black",
+  "dark_brown",
+  "brown",
+  "blonde",
+  "red",
+  "gray",
+  "custom",
+];
+
 export interface HairstyleTemplate {
   id: string;
   name: string;
@@ -14,11 +35,12 @@ export interface HairstyleTemplate {
   goal: HairGoal[];
   maintenance: "低" | "中" | "高";
   conditions: string;
-  /** The style may require perming, colouring, or heat-curling tools. */
-  requiresTreatment?: boolean;
+  /** The style may require perming or heat-curling tools. */
+  requiresPermOrHeat?: boolean;
   description: string;
   visual: "crop" | "waves" | "layer";
-  color: string;
+  /** Only used by the local placeholder preview; never sent as a hair-color instruction. */
+  previewColor: string;
 }
 
 export interface DesignPreferences {
@@ -31,14 +53,23 @@ export interface DesignPreferences {
   faceShape: "auto" | "oval" | "round" | "square" | "heart" | "long";
   fringe: "open" | "avoid" | "soft" | "full";
   parting: "auto" | "center" | "side";
-  chemical: boolean;
+  treatmentMode: TreatmentMode;
+  colorMode: HairColorMode;
+  targetHairColor?: HairColorPreset;
+  customHairColor?: string;
   dailyMinutes: number;
 }
 
-export type ConsultationBrief = Pick<
-  DesignPreferences,
-  "currentLength" | "targetLength" | "goal" | "chemical" | "dailyMinutes"
->;
+export interface ConsultationBrief {
+  currentLength: HairLength;
+  targetLength: HairLength;
+  goal: HairGoal;
+  treatmentMode: TreatmentMode;
+  colorMode: HairColorMode;
+  targetHairColor?: HairColorPreset;
+  customHairColor?: string;
+  dailyMinutes: number;
+}
 
 export const DEFAULT_DESIGN_PREFERENCES: DesignPreferences = {
   audience: "neutral",
@@ -50,14 +81,96 @@ export const DEFAULT_DESIGN_PREFERENCES: DesignPreferences = {
   faceShape: "auto",
   fringe: "open",
   parting: "auto",
-  chemical: false,
+  treatmentMode: "cut_only",
+  colorMode: "preserve",
   dailyMinutes: 5,
 };
 
+type LegacyDesignPreferences = Partial<DesignPreferences> & {
+  chemical?: boolean;
+};
+
+function isHairColorPreset(value: unknown): value is HairColorPreset {
+  return typeof value === "string" && HAIR_COLOR_PRESETS.includes(value as HairColorPreset);
+}
+
 export function normalizeDesignPreferences(
-  value: Partial<DesignPreferences> | null | undefined,
+  value: LegacyDesignPreferences | null | undefined,
 ): DesignPreferences {
-  return { ...DEFAULT_DESIGN_PREFERENCES, ...(value ?? {}) };
+  const raw = value ?? {};
+  const legacyChemical = raw.chemical;
+  const treatmentMode =
+    raw.treatmentMode === "cut_only" || raw.treatmentMode === "perm_allowed"
+      ? raw.treatmentMode
+      : legacyChemical === true
+        ? "perm_allowed"
+        : DEFAULT_DESIGN_PREFERENCES.treatmentMode;
+  const colorMode = raw.colorMode === "change" ? "change" : "preserve";
+  const targetHairColor =
+    colorMode === "change" && isHairColorPreset(raw.targetHairColor)
+      ? raw.targetHairColor
+      : undefined;
+  const customHairColor =
+    targetHairColor === "custom" && typeof raw.customHairColor === "string"
+      ? raw.customHairColor.trim().slice(0, 80) || undefined
+      : undefined;
+
+  return {
+    ...DEFAULT_DESIGN_PREFERENCES,
+    audience: raw.audience ?? DEFAULT_DESIGN_PREFERENCES.audience,
+    currentLength: raw.currentLength ?? DEFAULT_DESIGN_PREFERENCES.currentLength,
+    targetLength: raw.targetLength ?? DEFAULT_DESIGN_PREFERENCES.targetLength,
+    goal: raw.goal ?? DEFAULT_DESIGN_PREFERENCES.goal,
+    texture: raw.texture ?? DEFAULT_DESIGN_PREFERENCES.texture,
+    density: raw.density ?? DEFAULT_DESIGN_PREFERENCES.density,
+    faceShape: raw.faceShape ?? DEFAULT_DESIGN_PREFERENCES.faceShape,
+    fringe: raw.fringe ?? DEFAULT_DESIGN_PREFERENCES.fringe,
+    parting: raw.parting ?? DEFAULT_DESIGN_PREFERENCES.parting,
+    treatmentMode,
+    colorMode,
+    targetHairColor,
+    customHairColor,
+    dailyMinutes: raw.dailyMinutes ?? DEFAULT_DESIGN_PREFERENCES.dailyMinutes,
+  };
+}
+
+export function normalizeConsultationBrief(
+  value: Partial<ConsultationBrief> & { chemical?: boolean } | null | undefined,
+): ConsultationBrief {
+  const preferences = normalizeDesignPreferences(value);
+  return {
+    currentLength: preferences.currentLength,
+    targetLength: preferences.targetLength,
+    goal: preferences.goal,
+    treatmentMode: preferences.treatmentMode,
+    colorMode: preferences.colorMode,
+    targetHairColor: preferences.targetHairColor,
+    customHairColor: preferences.customHairColor,
+    dailyMinutes: preferences.dailyMinutes,
+  };
+}
+
+export function targetHairColorText(
+  preferences: Pick<DesignPreferences, "colorMode" | "targetHairColor" | "customHairColor">,
+) {
+  if (preferences.colorMode !== "change" || !preferences.targetHairColor) return null;
+  if (preferences.targetHairColor === "custom") return preferences.customHairColor?.trim() || null;
+  return {
+    black: "Black",
+    dark_brown: "Dark brown",
+    brown: "Brown",
+    blonde: "Blonde",
+    red: "Red",
+    gray: "Gray",
+  }[preferences.targetHairColor];
+}
+
+export function hasValidHairColorPreference(
+  preferences: Pick<DesignPreferences, "colorMode" | "targetHairColor" | "customHairColor">,
+) {
+  if (preferences.colorMode === "preserve") return true;
+  if (!preferences.targetHairColor) return false;
+  return preferences.targetHairColor !== "custom" || Boolean(preferences.customHairColor?.trim());
 }
 
 export interface DesignVariant {

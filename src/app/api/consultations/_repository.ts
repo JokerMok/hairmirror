@@ -15,13 +15,16 @@ import {
 import { getActiveModelConfig } from "@/lib/model-operations";
 import {
   HAIRSTYLES,
-  isTemplateCompatibleWithChemicalPreference,
+  isTemplateCompatibleWithTreatmentMode,
   recommendTemplates,
 } from "@/lib/catalog";
 import { readSourceImage } from "@/lib/source-storage";
 import { enqueueConsultationRecommendations } from "@/lib/generation-queue";
 import {
   DEFAULT_DESIGN_PREFERENCES,
+  hasValidHairColorPreference,
+  normalizeConsultationBrief,
+  normalizeDesignPreferences,
   type Consultation,
   type ConsultationBrief,
   type ConsultationStatus,
@@ -37,7 +40,14 @@ export function actorForUser(user: AuthUser): ConsultationActor {
 }
 const json = <T>(value: unknown, fallback: T): T => { try { return typeof value === "string" ? JSON.parse(value) as T : (value as T) ?? fallback; } catch { return fallback; } };
 const mapRecommendation = (r: Row): Recommendation => ({ id: String(r.id), consultationId: String(r.consultation_id), styleName: String(r.style_name), rationale: String(r.rationale), execution: json(r.execution_json, {}), imageUrl: r.image_url ? String(r.image_url) : undefined, rank: Number(r.rank ?? 0), createdAt: String(r.created_at) });
-const mapConsultation = (r: Row): Consultation => ({ id: String(r.id), salonId: r.salon_id ? String(r.salon_id) : null, customerUserId: r.customer_user_id ? String(r.customer_user_id) : null, stylistUserId: r.stylist_user_id ? String(r.stylist_user_id) : null, status: String(r.status) as ConsultationStatus, sourcePhotoPath: r.source_photo_path ? String(r.source_photo_path) : null, analysisResult: json(r.analysis_json, null), recommendations: [], selectedRecommendationId: r.selected_recommendation_id ? String(r.selected_recommendation_id) : null, generationStatus: String(r.generation_status ?? "idle") as Consultation["generationStatus"], sourceConsentAt: r.source_consent_at ? String(r.source_consent_at) : null, sourceConsentVersion: r.source_consent_version ? String(r.source_consent_version) : null, sourceQuality: json(r.source_quality_json, null), createdAt: String(r.created_at), updatedAt: String(r.updated_at) });
+const mapConsultation = (r: Row): Consultation => {
+  const analysis = json<Record<string, unknown> | null>(r.analysis_json, null);
+  const brief = analysis?.consultationBrief;
+  const analysisResult = brief && typeof brief === "object"
+    ? { ...analysis, consultationBrief: normalizeConsultationBrief(brief as Partial<ConsultationBrief> & { chemical?: boolean }) }
+    : analysis;
+  return { id: String(r.id), salonId: r.salon_id ? String(r.salon_id) : null, customerUserId: r.customer_user_id ? String(r.customer_user_id) : null, stylistUserId: r.stylist_user_id ? String(r.stylist_user_id) : null, status: String(r.status) as ConsultationStatus, sourcePhotoPath: r.source_photo_path ? String(r.source_photo_path) : null, analysisResult, recommendations: [], selectedRecommendationId: r.selected_recommendation_id ? String(r.selected_recommendation_id) : null, generationStatus: String(r.generation_status ?? "idle") as Consultation["generationStatus"], sourceConsentAt: r.source_consent_at ? String(r.source_consent_at) : null, sourceConsentVersion: r.source_consent_version ? String(r.source_consent_version) : null, sourceQuality: json(r.source_quality_json, null), createdAt: String(r.created_at), updatedAt: String(r.updated_at) };
+};
 export function findConsultation(id: string): Consultation | null {
   const row = db().prepare("SELECT * FROM consultations WHERE id=?").get(id) as Row | undefined;
   if (!row) return null;
@@ -119,13 +129,8 @@ function consultationBriefFromAnalysis(item: Consultation): ConsultationBrief | 
   const lengths: HairLength[] = ["short", "medium", "long"];
   const goals: HairGoal[] = ["fresh", "younger", "volume", "professional", "fashion"];
   if (!lengths.includes(brief.currentLength as HairLength) || !lengths.includes(brief.targetLength as HairLength) || !goals.includes(brief.goal as HairGoal)) return undefined;
-  return {
-    currentLength: brief.currentLength as HairLength,
-    targetLength: brief.targetLength as HairLength,
-    goal: brief.goal as HairGoal,
-    dailyMinutes: typeof brief.dailyMinutes === "number" && Number.isFinite(brief.dailyMinutes) ? brief.dailyMinutes : 10,
-    chemical: brief.chemical === true,
-  };
+  const normalized = normalizeConsultationBrief(brief as Partial<ConsultationBrief> & { chemical?: boolean });
+  return hasValidHairColorPreference(normalized) ? normalized : undefined;
 }
 
 const cutOnlyFallback = (index: number, brief: ConsultationBrief) => {
@@ -133,9 +138,9 @@ const cutOnlyFallback = (index: number, brief: ConsultationBrief) => {
     audience: "neutral",
     targetLength: brief.targetLength,
     goal: brief.goal,
-    chemical: brief.chemical,
+    treatmentMode: brief.treatmentMode,
   });
-  return candidates[index % candidates.length] ?? HAIRSTYLES.find((template) => !template.requiresTreatment)!;
+  return candidates[index % candidates.length] ?? HAIRSTYLES.find((template) => !template.requiresPermOrHeat)!;
 };
 
 const recommendationTemplate = (recommendation: Recommendation, index: number, brief?: ConsultationBrief) => {
@@ -152,7 +157,7 @@ const recommendationTemplate = (recommendation: Recommendation, index: number, b
     HAIRSTYLES.find((template) => template.id === "clean-side")!,
     HAIRSTYLES.find((template) => template.id === "french-bob")!,
   ][index % 3];
-  return !brief || isTemplateCompatibleWithChemicalPreference(selected, brief.chemical)
+  return !brief || isTemplateCompatibleWithTreatmentMode(selected, brief.treatmentMode)
     ? selected
     : cutOnlyFallback(index, brief);
 };
@@ -182,7 +187,7 @@ export function enqueueConsultationGeneration(item: Consultation, user: AuthUser
         status: "queued",
         createdAt: new Date().toISOString(),
         generationMode,
-        preferences: { ...DEFAULT_DESIGN_PREFERENCES, ...(brief ?? {}) },
+        preferences: normalizeDesignPreferences({ ...DEFAULT_DESIGN_PREFERENCES, ...(brief ?? {}) }),
         variants: [{
           id: randomUUID(),
           template,

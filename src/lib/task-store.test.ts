@@ -33,7 +33,8 @@ const task: StoredDesignTask = {
     currentLength: "short",
     targetLength: "short",
     goal: "fresh",
-    chemical: false,
+    treatmentMode: "cut_only",
+    colorMode: "preserve",
     dailyMinutes: 5,
   },
   variants: [
@@ -50,7 +51,7 @@ const task: StoredDesignTask = {
         conditions: "none",
         description: "test",
         visual: "crop",
-        color: "#000",
+        previewColor: "#000",
       },
     },
   ],
@@ -109,7 +110,23 @@ describe("persistent task ownership", () => {
       faceShape: "auto",
       fringe: "open",
       parting: "auto",
+      treatmentMode: "cut_only",
+      colorMode: "preserve",
     });
+  });
+
+  it("maps legacy chemical preferences to treatment while preserving original color", () => {
+    const legacy = structuredClone(task);
+    const preferences = legacy.preferences as unknown as Record<string, unknown>;
+    delete preferences.treatmentMode;
+    delete preferences.colorMode;
+    preferences.chemical = true;
+    addTask(legacy);
+    expect(listTasks("owner-a", null)[0].preferences).toMatchObject({
+      treatmentMode: "perm_allowed",
+      colorMode: "preserve",
+    });
+    expect(listTasks("owner-a", null)[0].preferences.targetHairColor).toBeUndefined();
   });
 
   it("keeps only the latest explicit result feedback", () => {

@@ -23,6 +23,7 @@ import type { Locale } from "@/lib/i18n";
 import type {
   DesignPreferences,
   DesignTask,
+  HairColorPreset,
   HairGoal,
   HairLength,
 } from "@/lib/types";
@@ -84,6 +85,19 @@ export function StudioWizard({
     auto: t("No preference", "不限"),
     center: t("Center part", "中分"),
     side: t("Side part", "侧分"),
+  };
+  const treatmentLabels: Record<DesignPreferences["treatmentMode"], string> = {
+    cut_only: t("Cut only", "仅剪发"),
+    perm_allowed: t("Perm allowed", "允许烫发"),
+  };
+  const hairColorLabels: Record<HairColorPreset, string> = {
+    black: t("Black", "黑色"),
+    dark_brown: t("Dark brown", "深棕色"),
+    brown: t("Brown", "棕色"),
+    blonde: t("Blonde", "金色"),
+    red: t("Red", "红色"),
+    gray: t("Gray", "灰色"),
+    custom: t("Custom", "自定义"),
   };
   const englishStyles: Record<string, { name: string; conditions: string }> = {
     "textured-crop": {
@@ -166,6 +180,14 @@ export function StudioWizard({
   >("idle");
   const [copied, setCopied] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const selectedHairColor =
+    preferences.colorMode === "change"
+      ? preferences.targetHairColor === "custom"
+        ? preferences.customHairColor || hairColorLabels.custom
+        : preferences.targetHairColor
+          ? hairColorLabels[preferences.targetHairColor]
+          : t("Choose a target color", "请选择目标发色")
+      : t("Preserve original", "保持原发色");
   const [recentTasks, setRecentTasks] = useState<DesignTask[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -418,8 +440,8 @@ export function StudioWizard({
     const variant = task?.variants.find((item) => item.id === selected);
     if (!variant) return;
     const text = isZh
-      ? `发型沟通卡\n意向发型：${styleName(variant.template)}\n核心诉求：${goalLabels[preferences.goal]}\n原生发质：${textureLabels[preferences.texture]}\n发量与粗细：${densityLabels[preferences.density]}\n脸型：${faceShapeLabels[preferences.faceShape]}\n刘海 / 分缝：${fringeLabels[preferences.fringe]} / ${partingLabels[preferences.parting]}\n每日打理：${preferences.dailyMinutes}分钟\n是否接受烫染：${preferences.chemical ? "可以" : "只剪发"}\n实现条件：${styleConditions(variant.template)}\n备注：AI预览仅作设计参考，请结合真实发质、发量和头型确认。`
-      : `Stylist reference card\nPreferred style: ${styleName(variant.template)}\nMain goal: ${goalLabels[preferences.goal]}\nNatural texture: ${textureLabels[preferences.texture]}\nHair density: ${densityLabels[preferences.density]}\nFace shape: ${faceShapeLabels[preferences.faceShape]}\nFringe / part: ${fringeLabels[preferences.fringe]} / ${partingLabels[preferences.parting]}\nDaily styling: ${preferences.dailyMinutes} minutes\nChemical treatment: ${preferences.chemical ? "Acceptable" : "Cut only"}\nConditions: ${styleConditions(variant.template)}\nNote: This AI preview is a design reference. Confirm feasibility with your stylist based on your hair texture, density, and head shape.`;
+      ? `发型沟通卡\n意向发型：${styleName(variant.template)}\n核心诉求：${goalLabels[preferences.goal]}\n原生发质：${textureLabels[preferences.texture]}\n发量与粗细：${densityLabels[preferences.density]}\n脸型：${faceShapeLabels[preferences.faceShape]}\n刘海 / 分缝：${fringeLabels[preferences.fringe]} / ${partingLabels[preferences.parting]}\n发型处理：${treatmentLabels[preferences.treatmentMode]}\n发色偏好：${selectedHairColor}\n每日打理：${preferences.dailyMinutes}分钟\n实现条件：${styleConditions(variant.template)}\n备注：AI预览仅作设计参考，请结合真实发质、发量和头型确认。`
+      : `Stylist reference card\nPreferred style: ${styleName(variant.template)}\nMain goal: ${goalLabels[preferences.goal]}\nNatural texture: ${textureLabels[preferences.texture]}\nHair density: ${densityLabels[preferences.density]}\nFace shape: ${faceShapeLabels[preferences.faceShape]}\nFringe / part: ${fringeLabels[preferences.fringe]} / ${partingLabels[preferences.parting]}\nHair treatment: ${treatmentLabels[preferences.treatmentMode]}\nHair color: ${selectedHairColor}\nDaily styling: ${preferences.dailyMinutes} minutes\nConditions: ${styleConditions(variant.template)}\nNote: This AI preview is a design reference. Confirm feasibility with your stylist based on your hair texture, density, and head shape.`;
     await navigator.clipboard.writeText(text);
     setCopied(true);
   }
@@ -831,17 +853,85 @@ export function StudioWizard({
                     }
                   />
                 </Field>
-                <Field title={t("Chemical treatment", "是否接受烫染")}>
+                <Field title={t("Hair treatment", "发型处理方式")}>
                   <Choice
                     options={[
-                      ["false", t("Cut only", "只剪发")],
-                      ["true", t("Perm or color is OK", "可以烫染")],
+                      ["cut_only", t("Cut only", "仅剪发")],
+                      ["perm_allowed", t("Perm allowed", "允许烫发")],
                     ]}
-                    value={String(preferences.chemical)}
+                    value={preferences.treatmentMode}
                     onChange={(v) =>
-                      setPreferences({ ...preferences, chemical: v === "true" })
+                      setPreferences({
+                        ...preferences,
+                        treatmentMode: v as DesignPreferences["treatmentMode"],
+                      })
                     }
                   />
+                </Field>
+                <Field title={t("Hair color", "发色偏好")}>
+                  <Choice
+                    options={[
+                      ["preserve", t("Preserve original", "保持原发色")],
+                      ["change", t("Change color", "改变发色")],
+                    ]}
+                    value={preferences.colorMode}
+                    onChange={(v) =>
+                      setPreferences({
+                        ...preferences,
+                        colorMode: v as DesignPreferences["colorMode"],
+                        targetHairColor: undefined,
+                        customHairColor: undefined,
+                      })
+                    }
+                  />
+                  {preferences.colorMode === "change" && (
+                    <div className="mt-3 space-y-3">
+                      <select
+                        aria-label={t("Target hair color", "目标发色")}
+                        value={preferences.targetHairColor ?? ""}
+                        onChange={(event) =>
+                          setPreferences({
+                            ...preferences,
+                            targetHairColor: event.target.value
+                              ? (event.target.value as HairColorPreset)
+                              : undefined,
+                            customHairColor:
+                              event.target.value === "custom"
+                                ? preferences.customHairColor
+                                : undefined,
+                          })
+                        }
+                        className="w-full rounded-xl border border-[#cfd7d2] bg-white px-4 py-3"
+                      >
+                        <option value="">
+                          {t("Choose a target color", "请选择目标发色")}
+                        </option>
+                        {Object.entries(hairColorLabels).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                      {preferences.targetHairColor === "custom" && (
+                        <input
+                          aria-label={t("Custom hair color", "自定义发色")}
+                          value={preferences.customHairColor ?? ""}
+                          onChange={(event) =>
+                            setPreferences({
+                              ...preferences,
+                              customHairColor: event.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "Describe the target color",
+                            "描述目标发色",
+                          )}
+                          maxLength={80}
+                          className="w-full rounded-xl border border-[#cfd7d2] bg-white px-4 py-3"
+                        />
+                      )}
+                    </div>
+                  )}
                 </Field>
                 <Field
                   title={t(
@@ -909,12 +999,12 @@ export function StudioWizard({
                     }
                   />
                   <Summary
-                    label={t("Treatment", "烫染")}
-                    value={
-                      preferences.chemical
-                        ? t("Allowed", "可以接受")
-                        : t("Cut only", "只考虑剪发")
-                    }
+                    label={t("Hair treatment", "发型处理")}
+                    value={treatmentLabels[preferences.treatmentMode]}
+                  />
+                  <Summary
+                    label={t("Hair color", "发色")}
+                    value={selectedHairColor}
                   />
                   <Summary
                     label={t("Hair", "发质与发量")}
@@ -1096,7 +1186,7 @@ export function StudioWizard({
                         data-style={v.template.visual}
                         style={
                           {
-                            "--hair-color": v.template.color,
+                            "--hair-color": v.template.previewColor,
                           } as React.CSSProperties
                         }
                       >

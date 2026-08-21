@@ -42,6 +42,7 @@ export default function CommunicationCard({ card, markdown }: Props) {
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {(Object.entries(card.instructions) as Array<[string, string]>).map(([label, value]) => <div key={label} className="rounded-2xl bg-white/10 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-200">{label}</p><p className="mt-2 text-sm text-white">{value}</p></div>)}
       </div>
+      {card.preferences && <div className="mt-4 grid gap-4 sm:grid-cols-2">{Object.entries(card.preferences).map(([label, value]) => <div key={label} className="rounded-2xl bg-white/10 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-200">{label}</p><p className="mt-2 text-sm text-white">{value}</p></div>)}</div>}
       <p className="mt-5 text-sm text-emerald-50"><strong>Upkeep:</strong> {card.upkeep}</p>
       <div className="mt-5 rounded-2xl border border-white/15 bg-white/5 p-4"><p className="text-sm font-semibold text-white">Confirm before starting</p><ul className="mt-2 space-y-1 text-sm text-emerald-50">{card.confirmationPrompts.map((prompt) => <li key={prompt}>• {prompt}</li>)}</ul></div>
       <p aria-live="polite" className="mt-3 min-h-5 text-xs text-amber-200">{status}</p>

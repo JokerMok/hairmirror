@@ -1,5 +1,11 @@
 import { assertRecommendationBelongsToConsultation, ConsultationDomainError } from "./consultation-domain";
-import type { Consultation, Recommendation } from "./types";
+import {
+  normalizeConsultationBrief,
+  targetHairColorText,
+  type Consultation,
+  type ConsultationBrief,
+  type Recommendation,
+} from "./types";
 
 export type CommunicationCard = {
   consultationId: string;
@@ -12,6 +18,10 @@ export type CommunicationCard = {
     top: string;
     texture: string;
     style: string;
+  };
+  preferences?: {
+    treatment: string;
+    color: string;
   };
   upkeep: string;
   confirmationPrompts: string[];
@@ -44,6 +54,11 @@ export function buildCommunicationCard(consultation: Consultation): Communicatio
   const recommendation = selectedRecommendation(consultation);
   const execution = recommendation.execution ?? {};
   const analysis = consultation.analysisResult ?? {};
+  const briefValue = analysis.consultationBrief;
+  const brief = briefValue && typeof briefValue === "object"
+    ? normalizeConsultationBrief(briefValue as Partial<ConsultationBrief> & { chemical?: boolean })
+    : null;
+  const targetColor = brief ? targetHairColorText(brief) : null;
   const goal = text(execution.suitableFor ?? analysis.goal, "Everyday wear");
   const whyItFits = text(
     recommendation.rationale || execution.advice,
@@ -68,6 +83,10 @@ export function buildCommunicationCard(consultation: Consultation): Communicatio
       texture: text(execution.texture, "Use the selected direction's natural texture."),
       style: text(execution.style, recommendation.styleName),
     },
+    preferences: {
+      treatment: brief?.treatmentMode === "perm_allowed" ? "Perm allowed" : "Cut only",
+      color: targetColor ?? "Preserve original",
+    },
     upkeep,
     confirmationPrompts: [
       "Confirm the side length and fade or taper.",
@@ -90,6 +109,14 @@ export function toCommunicationCardMarkdown(card: CommunicationCard): string {
     `- Texture: ${card.instructions.texture}`,
     `- Style: ${card.instructions.style}`,
     "",
+    ...(card.preferences
+      ? [
+          "## User preferences",
+          `- Hair treatment: ${card.preferences.treatment}`,
+          `- Hair color: ${card.preferences.color}`,
+          "",
+        ]
+      : []),
     `## Upkeep\n${card.upkeep}`,
     "",
     "## Confirm before starting",
