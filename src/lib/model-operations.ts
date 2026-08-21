@@ -399,8 +399,8 @@ export function enqueueGeneration(
     const id = crypto.randomUUID();
     database
       .prepare(
-        `INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,currency,error_code,attempts,queued_at)
-      VALUES(?,?,?,?, 'queued',?,?,0,?,NULL,0,?)`,
+        `INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,cost_per_image_micros,estimated_cost_micros,actual_cost_micros,currency,error_code,attempts,queued_at)
+      VALUES(?,?,?,?, 'queued',?,?,?,0,?,NULL,0,?)`,
       )
       .run(
         id,
@@ -408,6 +408,7 @@ export function enqueueGeneration(
         user?.id ?? null,
         model.id,
         variantCount,
+        model.costPerImageMicros,
         estimated,
         model.currency,
         now,

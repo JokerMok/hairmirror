@@ -105,6 +105,7 @@ function createDatabase(path: string) {
       model_config_id TEXT REFERENCES model_configs(id),
       status TEXT NOT NULL CHECK(status IN ('queued','processing','completed','failed','cancelled')),
       variant_count INTEGER NOT NULL,
+      cost_per_image_micros INTEGER NOT NULL DEFAULT 0,
       estimated_cost_micros INTEGER NOT NULL DEFAULT 0,
       actual_cost_micros INTEGER NOT NULL DEFAULT 0,
       currency TEXT NOT NULL DEFAULT 'CNY',
@@ -411,6 +412,10 @@ function createDatabase(path: string) {
   if (!generationJobColumns.some((column) => column.name === "currency"))
     database.exec(
       "ALTER TABLE generation_jobs ADD COLUMN currency TEXT NOT NULL DEFAULT 'CNY'",
+    );
+  if (!generationJobColumns.some((column) => column.name === "cost_per_image_micros"))
+    database.exec(
+      "ALTER TABLE generation_jobs ADD COLUMN cost_per_image_micros INTEGER NOT NULL DEFAULT 0",
     );
   database.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL",

@@ -171,10 +171,30 @@ describe("persistent generation queue", () => {
 
     const row = db()
       .prepare(
-        "SELECT estimated_cost_micros,currency FROM generation_jobs WHERE task_id=?",
+        "SELECT cost_per_image_micros,estimated_cost_micros,currency FROM generation_jobs WHERE task_id=?",
       )
-      .get(item.id) as { estimated_cost_micros: number; currency: string };
-    expect(row).toEqual({ estimated_cost_micros: 45_000, currency: "USD" });
+      .get(item.id) as {
+      cost_per_image_micros: number;
+      estimated_cost_micros: number;
+      currency: string;
+    };
+    expect(row).toEqual({
+      cost_per_image_micros: 15_000,
+      estimated_cost_micros: 45_000,
+      currency: "USD",
+    });
+    db()
+      .prepare(
+        "UPDATE model_configs SET cost_per_image_micros=70000,currency='CNY' WHERE id='demo-fixed'",
+      )
+      .run();
+    expect(
+      db()
+        .prepare(
+          "SELECT cost_per_image_micros,estimated_cost_micros,currency FROM generation_jobs WHERE task_id=?",
+        )
+        .get(item.id),
+    ).toEqual(row);
   });
 
   it("deduplicates enqueue and completes exactly once", async () => {
@@ -330,6 +350,84 @@ describe("persistent generation queue", () => {
     expect(row.status).toBe("queued");
     expect(row.attempts).toBe(1);
     expect(row.source_image_path).toBe(source.path);
+  });
+
+  it("accumulates floor costs across a partial failure and retry exactly once", async () => {
+    const encrypted = encryptSecret("test-key");
+    db()
+      .prepare(
+        "UPDATE model_configs SET provider='runninghub',model='test',endpoint=?,encrypted_api_key=?,cost_per_image_micros=?,currency=? WHERE id='demo-fixed'",
+      )
+      .run(
+        RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+        encrypted,
+        15_000,
+        "USD",
+      );
+    let submitted = 0;
+    let partialFailureUsed = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/openapi/v2/query")) {
+          const taskId = JSON.parse(String(init?.body)).taskId;
+          if (taskId === "rh-2" && !partialFailureUsed) {
+            partialFailureUsed = true;
+            return Response.json({
+              taskId,
+              status: "FAILED",
+              errorCode: "MODEL_FAILED",
+              errorMessage: "模型失败",
+              usage: { consumeMoney: "0.01" },
+            });
+          }
+          return Response.json({
+            taskId,
+            status: "SUCCESS",
+            usage: { consumeMoney: "0" },
+            results: [{ url: `https://images.example/${taskId}.png` }],
+          });
+        }
+        if (url.startsWith("https://images.example/"))
+          return new Response(new Uint8Array([137, 80, 78, 71]), {
+            status: 200,
+            headers: { "content-type": "image/png" },
+          });
+        submitted += 1;
+        return Response.json({ taskId: `rh-${submitted}`, status: "RUNNING" });
+      }),
+    );
+    const item = task();
+    const source = persistSourceImage(
+      "data:image/png;base64,iVBORw0KGgo=",
+      item.id,
+    );
+    const queued = enqueuePersistentGeneration({
+      task: item,
+      user: queueUser,
+      ownerKey: `user:${queueUserId}`,
+      idempotencyKey: "request-partial-retry-cost",
+      sourceImagePath: source.path,
+      sourceExpiresAt: source.expiresAt,
+    });
+
+    const firstAttempt = await processNextGenerationJob(Date.now());
+    expect(firstAttempt).toMatchObject({ status: "retrying", jobId: queued.jobId });
+    expect(
+      (db().prepare("SELECT actual_cost_micros FROM generation_jobs WHERE id=?").get(queued.jobId) as { actual_cost_micros: number }).actual_cost_micros,
+    ).toBe(40_000);
+
+    expect(await processNextGenerationJob(Date.now() + 10_000)).toMatchObject({
+      status: "completed",
+      jobId: queued.jobId,
+    });
+    expect(
+      (db().prepare("SELECT actual_cost_micros,currency FROM generation_jobs WHERE id=?").get(queued.jobId) as { actual_cost_micros: number; currency: string }),
+    ).toEqual({ actual_cost_micros: 85_000, currency: "USD" });
+    expect(await processNextGenerationJob(Date.now() + 20_000)).toEqual({
+      status: "idle",
+    });
   });
 
   it("stores provider error code and cleaned message for operations review", async () => {

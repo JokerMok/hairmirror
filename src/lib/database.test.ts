@@ -179,9 +179,10 @@ describe("database model defaults", () => {
       .all() as Array<{ name: string; dflt_value: string | null }>;
     const row = migrated
       .prepare(
-        "SELECT currency,estimated_cost_micros,actual_cost_micros FROM generation_jobs WHERE id='legacy-job'",
+        "SELECT cost_per_image_micros,currency,estimated_cost_micros,actual_cost_micros FROM generation_jobs WHERE id='legacy-job'",
       )
       .get() as {
+      cost_per_image_micros: number;
       currency: string;
       estimated_cost_micros: number;
       actual_cost_micros: number;
@@ -191,6 +192,7 @@ describe("database model defaults", () => {
       "'CNY'",
     );
     expect(row).toEqual({
+      cost_per_image_micros: 0,
       currency: "CNY",
       estimated_cost_micros: 210000,
       actual_cost_micros: 210000,

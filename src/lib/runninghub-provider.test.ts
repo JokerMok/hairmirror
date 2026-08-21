@@ -66,6 +66,7 @@ describe("RunningHub adapter", () => {
         endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
         apiKey: "test-key",
         timeoutMs: 5000,
+        costPerImageMicros: 15_000,
       },
       HAIRSTYLES.slice(0, 3),
       {
@@ -92,6 +93,58 @@ describe("RunningHub adapter", () => {
     expect(prompts[0]).toContain("背景、曝光和光线不得变化");
   });
 
+  it.each([
+    ["provider cost below the configured floor", { consumeMoney: "0.01" }, 45_000],
+    ["provider cost missing", undefined, 45_000],
+    ["provider cost above the configured floor", { consumeMoney: "0.02" }, 60_000],
+  ])(
+    "%s",
+    async (_label, usage, expectedCostMicros) => {
+      let submitted = 0;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+          const url = String(input);
+          if (url.endsWith("/openapi/v2/query")) {
+            const taskId = JSON.parse(String(init?.body)).taskId;
+            return Response.json({
+              taskId,
+              status: "SUCCESS",
+              usage,
+              results: [{ url: `https://images.example/${taskId}.png` }],
+            });
+          }
+          if (url.startsWith("https://images.example/"))
+            return new Response(new Uint8Array([137, 80, 78, 71]), {
+              status: 200,
+              headers: { "content-type": "image/png" },
+            });
+          submitted += 1;
+          return Response.json({ taskId: `rh-floor-${submitted}` });
+        }),
+      );
+
+      const result = await generateWithRunningHub(
+        {
+          endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
+          apiKey: "test-key",
+          timeoutMs: 5000,
+          costPerImageMicros: 15_000,
+        },
+        HAIRSTYLES.slice(0, 3),
+        {
+          taskId: crypto.randomUUID(),
+          ownerSessionId: "test-session",
+          userId: null,
+          preferences: DEFAULT_DESIGN_PREFERENCES,
+          imageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+        },
+      );
+
+      expect(result.actualCostMicros).toBe(expectedCostMicros);
+    },
+  );
+
   it("cleans partial outputs and reports known provider cost when one variant fails", async () => {
     let submitted = 0;
     vi.stubGlobal(
@@ -106,6 +159,7 @@ describe("RunningHub adapter", () => {
               status: "FAILED",
               errorCode: "MODEL_FAILED",
               errorMessage: "模型失败",
+              usage: { consumeMoney: "0.01" },
             });
           return Response.json({
             taskId,
@@ -130,6 +184,7 @@ describe("RunningHub adapter", () => {
           endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
           apiKey: "test-key",
           timeoutMs: 5000,
+          costPerImageMicros: 15_000,
         },
         HAIRSTYLES.slice(0, 3),
         {
@@ -144,7 +199,7 @@ describe("RunningHub adapter", () => {
       message: "MODEL_FAILED: 模型失败",
       errorCode: "MODEL_FAILED",
       errorMessage: "模型失败",
-      actualCostMicros: 60_000,
+      actualCostMicros: 70_000,
     });
     expect(
       (
@@ -178,6 +233,7 @@ describe("RunningHub adapter", () => {
           endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
           apiKey: "test-key",
           timeoutMs: 5000,
+          costPerImageMicros: 15_000,
         },
         HAIRSTYLES.slice(0, 1),
         {
@@ -228,6 +284,7 @@ describe("RunningHub adapter", () => {
           endpoint: RUNNINGHUB_INTERNATIONAL_ENDPOINT,
           apiKey: "test-key",
           timeoutMs: 5000,
+          costPerImageMicros: 15_000,
         },
         HAIRSTYLES.slice(0, 1),
         {

@@ -15,7 +15,12 @@ type RunningHubResponse = {
     thirdPartyConsumeMoney?: string | null;
   };
 };
-type RunningHubConfig = { endpoint: string; apiKey: string; timeoutMs: number };
+type RunningHubConfig = {
+  endpoint: string;
+  apiKey: string;
+  timeoutMs: number;
+  costPerImageMicros: number;
+};
 type RunningHubContext = {
   taskId: string;
   ownerSessionId: string;
@@ -44,6 +49,13 @@ function cleanErrorMessage(value: unknown, fallback: string) {
   return message.length > MAX_PROVIDER_ERROR_MESSAGE_LENGTH
     ? `${message.slice(0, MAX_PROVIDER_ERROR_MESSAGE_LENGTH - 1)}…`
     : message;
+}
+
+function providerUsageCost(data: RunningHubResponse) {
+  return (
+    moneyToMicros(data.usage?.consumeMoney) +
+    moneyToMicros(data.usage?.thirdPartyConsumeMoney)
+  );
 }
 
 export class RunningHubGenerationError extends Error {
@@ -121,7 +133,7 @@ async function requestJson(url: string, init: RequestInit, timeoutMs: number) {
     throw new RunningHubGenerationError(
       data.errorCode || `RUNNINGHUB_HTTP_${response.status}`,
       data.errorMessage || `HTTP ${response.status}`,
-      0,
+      providerUsageCost(data),
     );
   return data;
 }
@@ -151,7 +163,7 @@ async function submit(
     throw new RunningHubGenerationError(
       data.errorCode || "RUNNINGHUB_SUBMIT_FAILED",
       data.errorMessage || "RunningHub 未返回任务 ID",
-      0,
+      providerUsageCost(data),
     );
   return data.taskId;
 }
@@ -178,19 +190,22 @@ async function waitForResult(config: RunningHubConfig, taskId: string) {
     const data = await query(config, taskId);
     if (data.status === "SUCCESS") {
       const url = data.results?.find((result) => result.url)?.url;
-      if (!url) throw new Error("RUNNINGHUB_EMPTY_RESULT");
+      if (!url)
+        throw new RunningHubGenerationError(
+          "RUNNINGHUB_EMPTY_RESULT",
+          "RunningHub 未返回结果图片",
+          providerUsageCost(data),
+        );
       return {
         url,
-        costMicros:
-          moneyToMicros(data.usage?.consumeMoney) +
-          moneyToMicros(data.usage?.thirdPartyConsumeMoney),
+        costMicros: providerUsageCost(data),
       };
     }
     if (data.status === "FAILED")
       throw new RunningHubGenerationError(
         data.errorCode || "RUNNINGHUB_FAILED",
         data.errorMessage || "RunningHub 任务失败",
-        0,
+        providerUsageCost(data),
       );
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
@@ -257,21 +272,41 @@ export async function generateWithRunningHub(
         hairstylePrompt(template, context.preferences),
       );
       const result = await waitForResult(config, remoteTaskId);
-      const localUrl = await persistResult(result.url, context);
+      let localUrl: string;
+      try {
+        localUrl = await persistResult(result.url, context);
+      } catch {
+        throw new RunningHubGenerationError(
+          "RUNNINGHUB_RESULT_PERSIST_FAILED",
+          "生成图片保存失败",
+          result.costMicros,
+        );
+      }
       return {
         templateId: template.id,
         url: localUrl,
-        costMicros: result.costMicros,
+        costMicros: Math.max(
+          result.costMicros,
+          Math.max(0, config.costPerImageMicros),
+        ),
       };
     }),
   );
   const outputs = settled.flatMap((result) =>
     result.status === "fulfilled" ? [result.value] : [],
   );
-  const actualCostMicros = outputs.reduce(
+  const successfulCostMicros = outputs.reduce(
     (sum, output) => sum + output.costMicros,
     0,
   );
+  const failedCostMicros = settled.reduce((sum, result) => {
+    if (result.status !== "rejected") return sum;
+    const reason = result.reason;
+    return reason instanceof RunningHubGenerationError
+      ? sum + Math.max(0, reason.actualCostMicros)
+      : sum;
+  }, 0);
+  const actualCostMicros = successfulCostMicros + failedCostMicros;
   const failed = settled.find((result) => result.status === "rejected");
   if (failed) {
     removeAssetsForTask(

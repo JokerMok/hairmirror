@@ -15,6 +15,7 @@ export type GenerationContext = {
   userId: string | null;
   preferences: DesignPreferences;
   imageDataUrl?: string;
+  costPerImageMicros?: number;
   consultationId?: string;
   recommendationId?: string;
 };
@@ -48,6 +49,8 @@ export async function generateHairstyleImages(
           RUNNINGHUB_INTERNATIONAL_ENDPOINT,
         apiKey: active.apiKey,
         timeoutMs: active.timeoutMs,
+        costPerImageMicros:
+          context.costPerImageMicros ?? active.costPerImageMicros,
       },
       templates,
       { ...context, imageDataUrl: context.imageDataUrl },

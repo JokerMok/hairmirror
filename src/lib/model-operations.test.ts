@@ -7,6 +7,7 @@ import {
   costSummary,
   enqueueGeneration,
   failGenerationJob,
+  listGenerationJobs,
   resetUserFreePreview,
   startGenerationJob,
   updateModelRuntime,
@@ -63,6 +64,11 @@ describe("generation cost accounting", () => {
     expect(costSummary().costsByCurrency).toEqual({
       CNY: 60_000,
       USD: 45_000,
+    });
+    expect(listGenerationJobs().find((item) => item.id === usdJob.id)).toMatchObject({
+      actual_cost_micros: 45_000,
+      currency: "USD",
+      variant_count: 3,
     });
   });
 

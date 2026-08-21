@@ -30,6 +30,7 @@ type ClaimedJob = {
   taskId: string;
   userId: string | null;
   modelConfigId: string;
+  costPerImageMicros: number;
   attempts: number;
   maxAttempts: number;
   ownerSessionId: string;
@@ -123,16 +124,17 @@ function enqueuePersistentGenerationInTransaction(
       input.task.generationMode,
       input.task.createdAt,
     );
-  database
-    .prepare(
-      "INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,estimated_cost_micros,actual_cost_micros,currency,error_code,attempts,queued_at) VALUES(?,?,?,?, 'queued',?,?,0,?,NULL,0,?)",
-    )
+    database
+      .prepare(
+      "INSERT INTO generation_jobs(id,task_id,user_id,model_config_id,status,variant_count,cost_per_image_micros,estimated_cost_micros,actual_cost_micros,currency,error_code,attempts,queued_at) VALUES(?,?,?,?, 'queued',?,?,?,0,?,NULL,0,?)",
+      )
     .run(
       jobId,
       input.task.id,
       input.user?.id ?? null,
       model.id,
       input.task.variants.length,
+      model.costPerImageMicros,
       estimatedCost,
       model.currency,
       now,
@@ -429,6 +431,7 @@ export function claimNextGenerationJob(now = Date.now()): ClaimedJob | null {
       taskId: String(row.task_id),
       userId: row.user_id ? String(row.user_id) : null,
       modelConfigId: String(row.model_config_id),
+      costPerImageMicros: Number(row.cost_per_image_micros ?? 0),
       attempts: Number(row.attempts) + 1,
       maxAttempts: Number(row.max_attempts),
       ownerSessionId: String(row.owner_session_id),
@@ -725,6 +728,7 @@ export async function processNextGenerationJob(now = Date.now()) {
         userId: job.userId,
         preferences: job.payload.preferences,
         imageDataUrl,
+        costPerImageMicros: job.costPerImageMicros,
         consultationId: job.payload.queueMetadata?.consultationId,
         recommendationId: job.payload.queueMetadata?.recommendationId,
       },
@@ -786,6 +790,7 @@ export function requestGenerationCancellation(taskId: string) {
       taskId,
       userId: row.user_id ? String(row.user_id) : null,
       modelConfigId: String(row.model_config_id),
+      costPerImageMicros: Number(row.cost_per_image_micros ?? 0),
       attempts: Number(row.attempts),
       maxAttempts: Number(row.max_attempts),
       ownerSessionId: String(row.owner_session_id),
@@ -937,6 +942,7 @@ export function recoverStaleGenerationJobs(now = Date.now()) {
       taskId: String(row.task_id),
       userId: row.user_id ? String(row.user_id) : null,
       modelConfigId: String(row.model_config_id),
+      costPerImageMicros: Number(row.cost_per_image_micros ?? 0),
       attempts: Number(row.attempts),
       maxAttempts: Number(row.max_attempts),
       ownerSessionId: String(row.owner_session_id),
