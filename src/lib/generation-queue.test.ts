@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hashPassword } from "./auth";
-import { HAIRSTYLES } from "./catalog";
+import { recommendTemplates } from "./catalog";
 import {
   closeDatabaseForTest,
   db,
@@ -23,13 +23,27 @@ import {
 import { encryptSecret } from "./secret-vault";
 import { persistSourceImage } from "./source-storage";
 import { getTaskInternal } from "./task-store";
-import { DEFAULT_DESIGN_PREFERENCES, type StoredDesignTask } from "./types";
+import {
+  DEFAULT_DESIGN_PREFERENCES,
+  type DesignPreferences,
+  type StoredDesignTask,
+} from "./types";
 
 let directory = "";
 let sequence = 0;
 const queueUserId = "00000000-0000-4000-8000-000000000401";
 let queueUser: AuthUser;
-function task(): StoredDesignTask {
+function task(overrides: Partial<DesignPreferences> = {}): StoredDesignTask {
+  const preferences: DesignPreferences = {
+    ...DEFAULT_DESIGN_PREFERENCES,
+    audience: "neutral",
+    currentLength: "short",
+    targetLength: "short",
+    goal: "fresh",
+    chemical: false,
+    dailyMinutes: 5,
+    ...overrides,
+  };
   return {
     id: crypto.randomUUID(),
     ownerSessionId: "owner",
@@ -37,16 +51,8 @@ function task(): StoredDesignTask {
     status: "queued",
     createdAt: new Date().toISOString(),
     generationMode: "demo-fixed",
-    preferences: {
-      ...DEFAULT_DESIGN_PREFERENCES,
-      audience: "neutral",
-      currentLength: "short",
-      targetLength: "short",
-      goal: "fresh",
-      chemical: false,
-      dailyMinutes: 5,
-    },
-    variants: HAIRSTYLES.slice(0, 3).map((template) => ({
+    preferences,
+    variants: recommendTemplates(preferences).map((template) => ({
       id: crypto.randomUUID(),
       template,
       reason: `test-${(sequence += 1)}`,
@@ -159,7 +165,13 @@ describe("persistent generation queue", () => {
         RUNNINGHUB_INTERNATIONAL_COST_PER_IMAGE_MICROS,
         RUNNINGHUB_INTERNATIONAL_CURRENCY,
       );
-    const item = task();
+    const item = task({
+      currentLength: "long",
+      targetLength: "medium",
+      goal: "volume",
+      texture: "straight",
+      parting: "center",
+    });
     enqueuePersistentGeneration({
       task: item,
       user: queueUser,
@@ -183,6 +195,9 @@ describe("persistent generation queue", () => {
       estimated_cost_micros: 45_000,
       currency: "USD",
     });
+    expect(item.variants).toHaveLength(3);
+    expect(new Set(item.variants.map((variant) => variant.template.id)).size).toBe(3);
+    expect(item.variants.every((variant) => !variant.template.requiresTreatment)).toBe(true);
     db()
       .prepare(
         "UPDATE model_configs SET cost_per_image_micros=70000,currency='CNY' WHERE id='demo-fixed'",

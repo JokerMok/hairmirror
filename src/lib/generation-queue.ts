@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import type { AuthUser } from "./database";
 import { db } from "./database";
+import { HAIRSTYLE_DIRECTION_COUNT } from "./catalog";
 import { generateHairstyleImages } from "./generation-provider";
 import { RunningHubGenerationError } from "./runninghub-provider";
 import {
@@ -97,6 +98,8 @@ function enqueuePersistentGenerationInTransaction(
   now: string,
   nowMs: number,
 ) {
+  if (!input.metadata && input.task.variants.length !== HAIRSTYLE_DIRECTION_COUNT)
+    throw new Error("INVALID_VARIANT_COUNT");
   const existing = findIdempotentTask(input.ownerKey, input.idempotencyKey);
   if (existing) return { ...existing, duplicate: true };
   const database = db();

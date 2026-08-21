@@ -27,6 +27,7 @@ import type {
   HairLength,
 } from "@/lib/types";
 import { DEFAULT_DESIGN_PREFERENCES } from "@/lib/types";
+import { HAIRSTYLE_DIRECTION_COUNT } from "@/lib/catalog";
 import {
   clearStudioDraft,
   DEFAULT_PHOTO_CONSENT,
@@ -119,6 +120,11 @@ export function StudioWizard({
       name: "Soft neutral shag",
       conditions:
         "Keep length at the nape and be comfortable with visible layers.",
+    },
+    "straight-layer": {
+      name: "Straight soft layers",
+      conditions:
+        "Works with straight, medium-length hair; the shape comes from the cut and does not require a perm or curling tool.",
     },
     "long-soft-curl": {
       name: "Long natural curls",
@@ -886,8 +892,8 @@ export function StudioWizard({
                 </p>
                 <h2 className="mt-2 text-3xl font-semibold">
                   {t(
-                    "Ready to create three hairstyle directions",
-                    "准备生成三种发型方向",
+                    `Ready to create ${HAIRSTYLE_DIRECTION_COUNT} hairstyle directions`,
+                    `准备生成${HAIRSTYLE_DIRECTION_COUNT}种发型方向`,
                   )}
                 </h2>
                 <div className="mt-7 grid gap-3 text-sm">
@@ -979,7 +985,10 @@ export function StudioWizard({
                     size={44}
                   />
                   <h2 className="mt-5 text-2xl font-semibold">
-                    {t("Creating three hairstyle previews", "正在生成三种发型")}
+                    {t(
+                      `Creating ${HAIRSTYLE_DIRECTION_COUNT} hairstyle previews`,
+                      `正在生成${HAIRSTYLE_DIRECTION_COUNT}种发型`,
+                    )}
                   </h2>
                   <p className="mt-2 text-sm text-[#6f7773]">
                     {t(
@@ -1057,6 +1066,12 @@ export function StudioWizard({
                     {t(
                       "Select one to create a reference card for your stylist.",
                       "选中后可以生成发型师沟通卡。",
+                    )}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-[#1f6b5c]">
+                    {t(
+                      `${task.variants.length} hairstyle directions`,
+                      `${task.variants.length} 个发型方向`,
                     )}
                   </p>
                 </div>

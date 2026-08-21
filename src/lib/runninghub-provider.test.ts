@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HAIRSTYLES } from "./catalog";
+import { HAIRSTYLES, recommendTemplates } from "./catalog";
 import {
   closeDatabaseForTest,
   db,
@@ -131,12 +131,26 @@ describe("RunningHub adapter", () => {
           timeoutMs: 5000,
           costPerImageMicros: 15_000,
         },
-        HAIRSTYLES.slice(0, 3),
+        recommendTemplates({
+          audience: "neutral",
+          targetLength: "medium",
+          goal: "volume",
+          chemical: false,
+        }),
         {
           taskId: crypto.randomUUID(),
           ownerSessionId: "test-session",
           userId: null,
-          preferences: DEFAULT_DESIGN_PREFERENCES,
+          preferences: {
+            ...DEFAULT_DESIGN_PREFERENCES,
+            currentLength: "long",
+            targetLength: "medium",
+            goal: "volume",
+            texture: "straight",
+            parting: "center",
+            dailyMinutes: 5,
+            chemical: false,
+          },
           imageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
         },
       );

@@ -8,6 +8,8 @@ export const GOAL_LABELS: Record<HairGoal, string> = {
   fashion: "风格变化",
 };
 
+export const HAIRSTYLE_DIRECTION_COUNT = 3;
+
 export const HAIRSTYLES: HairstyleTemplate[] = [
   {
     id: "textured-crop",
@@ -107,6 +109,18 @@ export const HAIRSTYLES: HairstyleTemplate[] = [
     color: "#29211d",
   },
   {
+    id: "straight-layer",
+    name: "直发轻层次",
+    audience: "all",
+    length: "medium",
+    goal: ["fresh", "professional", "volume"],
+    maintenance: "低",
+    conditions: "适合直发和中等长度，依靠剪裁形成轮廓，不需要烫发或卷发工具",
+    description: "保留自然直发质感，以轻薄层次改善轮廓，日常只需简单梳理。",
+    visual: "layer",
+    color: "#33251f",
+  },
+  {
     id: "long-soft-curl",
     name: "长发自然大弯",
     audience: "all",
@@ -160,6 +174,6 @@ export function recommendTemplates(preferences: {
   }));
   return scored
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
+    .slice(0, HAIRSTYLE_DIRECTION_COUNT)
     .map(({ item }) => item);
 }

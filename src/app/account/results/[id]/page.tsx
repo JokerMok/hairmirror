@@ -19,6 +19,7 @@ const englishNames: Record<string, string> = {
   "french-bob": "French bob",
   "air-bangs": "Long hair with airy bangs",
   "neutral-shag": "Soft neutral shag",
+  "straight-layer": "Straight soft layers",
   "long-soft-curl": "Long natural curls",
   "sleek-long": "Sleek long layers",
 };
@@ -62,6 +63,12 @@ export default async function AccountResultPage({
               </h1>
               <p className="mt-2 text-sm text-[#6f7773]">
                 {new Date(task.createdAt).toLocaleString(locale)}
+              </p>
+              <p className="mt-2 text-sm font-medium text-[#1f6b5c]">
+                {t(
+                  `${task.variants.length} hairstyle directions`,
+                  `${task.variants.length} 个发型方向`,
+                )}
               </p>
             </div>
             <span className="rounded-full bg-[#edf3ef] px-4 py-2 text-sm font-medium text-[#1f6b5c]">

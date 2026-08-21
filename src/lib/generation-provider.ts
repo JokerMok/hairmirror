@@ -29,6 +29,7 @@ const DEMO_IMAGES: Record<string, string> = {
   "long-layer": "/demo-results/french-bob.png",
   "air-bangs": "/demo-results/french-bob.png",
   "neutral-shag": "/demo-results/textured-crop.png",
+  "straight-layer": "/demo-results/french-bob.png",
   "long-soft-curl": "/demo-results/french-bob.png",
   "sleek-long": "/demo-results/french-bob.png",
 };

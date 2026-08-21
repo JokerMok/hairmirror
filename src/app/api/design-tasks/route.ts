@@ -1,6 +1,10 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { recommendTemplates, GOAL_LABELS } from "@/lib/catalog";
+import {
+  GOAL_LABELS,
+  HAIRSTYLE_DIRECTION_COUNT,
+  recommendTemplates,
+} from "@/lib/catalog";
 import { getTaskForOwner, listTasks } from "@/lib/task-store";
 import type { StoredDesignTask } from "@/lib/types";
 import { getOrCreateSession, SESSION_COOKIE } from "@/lib/session";
@@ -107,6 +111,8 @@ export async function POST(request: NextRequest) {
     await refreshGumroadLicense(user.id);
   const idempotencyKey = validIdempotencyKey ?? crypto.randomUUID();
   const templates = recommendTemplates(parsed.data.preferences);
+  if (templates.length !== HAIRSTYLE_DIRECTION_COUNT)
+    return respond({ error: "RECOMMENDATIONS_UNAVAILABLE" }, 503);
   const taskId = crypto.randomUUID();
   let source: { path: string | null; expiresAt: number | null };
   try {
