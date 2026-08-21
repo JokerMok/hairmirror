@@ -1,10 +1,17 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 
 process.umask(0o077);
 
 const railway = Boolean(process.env.RAILWAY_ENVIRONMENT);
+const workingDirectory = resolve(process.cwd());
+const webServerPath = existsSync(resolve(workingDirectory, "server.js"))
+  ? resolve(workingDirectory, "server.js")
+  : resolve(workingDirectory, ".next/standalone/server.js");
+const workerScriptPath = existsSync(resolve(workingDirectory, "scripts/worker.mjs"))
+  ? resolve(workingDirectory, "scripts/worker.mjs")
+  : resolve(workingDirectory, "../../scripts/worker.mjs");
 const volumeRoot = process.env.RAILWAY_VOLUME_MOUNT_PATH
   ? resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH)
   : resolve(process.env.PERSISTENT_DATA_DIR ?? "/app/data");
@@ -24,6 +31,13 @@ const requiredSecrets = [
 const missingSecrets = requiredSecrets.filter((name) => !process.env[name]);
 if (missingSecrets.length > 0) {
   console.error(`MISSING_PRODUCTION_SECRETS: ${missingSecrets.join(",")}`);
+  process.exit(1);
+}
+
+if (!existsSync(webServerPath) || !existsSync(workerScriptPath)) {
+  console.error(
+    `PRODUCTION_RUNTIME_FILES_MISSING: web=${webServerPath} worker=${workerScriptPath}`,
+  );
   process.exit(1);
 }
 
@@ -82,5 +96,5 @@ function shutdown(code = 0) {
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
-launch("web", process.execPath, ["server.js"]);
-launch("worker", process.execPath, ["scripts/worker.mjs"]);
+launch("web", process.execPath, [webServerPath]);
+launch("worker", process.execPath, [workerScriptPath]);
