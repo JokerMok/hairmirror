@@ -50,6 +50,43 @@ describe("safeRedirectUrl", () => {
     );
   });
 
+  it("uses the current Quick Tunnel when the configured tunnel address is stale", () => {
+    process.env.PUBLIC_APP_URL =
+      "https://old-tunnel.trycloudflare.com/ignored-path";
+    expect(
+      safeRedirectUrl(
+        new Request("https://new-tunnel.trycloudflare.com/api/admin/login"),
+        "/admin",
+      ).toString(),
+    ).toBe("https://new-tunnel.trycloudflare.com/admin");
+  });
+
+  it("recognizes the current Quick Tunnel from reverse-proxy headers", () => {
+    process.env.PUBLIC_APP_URL =
+      "https://old-tunnel.trycloudflare.com/ignored-path";
+    expect(
+      safeRedirectUrl(
+        new Request("http://127.0.0.1:3000/api/admin/login", {
+          headers: {
+            host: "new-tunnel.trycloudflare.com",
+            "x-forwarded-proto": "https",
+          },
+        }),
+        "/admin",
+      ).toString(),
+    ).toBe("https://new-tunnel.trycloudflare.com/admin");
+  });
+
+  it("does not replace a configured canonical origin with a temporary tunnel", () => {
+    process.env.PUBLIC_APP_URL = "https://hair.example";
+    expect(
+      safeRedirectUrl(
+        new Request("https://temporary.trycloudflare.com/api/admin/login"),
+        "/admin",
+      ).toString(),
+    ).toBe("https://hair.example/admin");
+  });
+
   it("uses Railway's public domain when no explicit origin is configured", () => {
     process.env.RAILWAY_PUBLIC_DOMAIN =
       "web-production-eeda8.up.railway.app";

@@ -8,11 +8,12 @@ import {
   enqueueGeneration,
   failGenerationJob,
   listGenerationJobs,
+  resetUserPassword,
   resetUserFreePreview,
   startGenerationJob,
   updateModelRuntime,
 } from "./model-operations";
-import { hashPassword } from "./auth";
+import { createAuthSession, hashPassword, verifyPassword } from "./auth";
 
 let directory = "";
 beforeEach(() => {
@@ -149,5 +150,56 @@ describe("admin free preview reset", () => {
       ok: false,
       reason: "TRIAL_IN_PROGRESS",
     });
+  });
+});
+
+describe("admin password reset", () => {
+  it("sets the default password, revokes sessions, and records a safe audit log", () => {
+    const userId = crypto.randomUUID();
+    db()
+      .prepare(
+        "INSERT INTO users(id,phone,email,name,password_hash,role,status,created_at) VALUES(?,?,?,?,?,'personal','active',?)",
+      )
+      .run(
+        userId,
+        `email-${userId}`,
+        "password-reset@example.com",
+        "Password reset user",
+        hashPassword("old-password"),
+        new Date().toISOString(),
+      );
+    createAuthSession(userId);
+
+    expect(resetUserPassword(userId)).toEqual({ ok: true });
+    const row = db()
+      .prepare("SELECT password_hash FROM users WHERE id=?")
+      .get(userId) as { password_hash: string };
+    expect(verifyPassword("a00000000", row.password_hash)).toBe(true);
+    expect(verifyPassword("old-password", row.password_hash)).toBe(false);
+    expect(
+      db()
+        .prepare("SELECT COUNT(*) AS count FROM auth_sessions WHERE user_id=?")
+        .get(userId),
+    ).toMatchObject({ count: 0 });
+    const audit = db()
+      .prepare(
+        "SELECT action,details_json FROM audit_logs WHERE resource_id=? ORDER BY created_at DESC LIMIT 1",
+      )
+      .get(userId) as { action: string; details_json: string };
+    expect(audit.action).toBe("user.password_reset");
+    expect(audit.details_json).not.toContain("a00000000");
+    expect(audit.details_json).not.toContain("old-password");
+  });
+
+  it("returns not found without writing an audit record", () => {
+    expect(resetUserPassword("missing-user")).toEqual({
+      ok: false,
+      reason: "NOT_FOUND",
+    });
+    expect(
+      db()
+        .prepare("SELECT COUNT(*) AS count FROM audit_logs WHERE action=?")
+        .get("user.password_reset"),
+    ).toMatchObject({ count: 0 });
   });
 });

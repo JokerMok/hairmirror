@@ -1,5 +1,6 @@
 import type { AuthUser } from "./database";
 import { db, getAuthUserById } from "./database";
+import { hashPassword } from "./auth";
 import { decryptSecret, encryptSecret, maskSecret } from "./secret-vault";
 import { entitledQuota } from "./billing";
 
@@ -24,6 +25,7 @@ const ROLE_LIMITS: Record<AuthUser["role"], number> = {
   store_owner: 0,
   staff: 0,
 };
+const ADMIN_RESET_PASSWORD = "a00000000";
 
 function publicConfig(row: ModelRow) {
   let apiKeyMasked: string | null = null;
@@ -285,6 +287,39 @@ export function updateUserQuota(userId: string, limitCount: number) {
     };
   } catch (error) {
     database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export function resetUserPassword(userId: string) {
+  const database = db();
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    const user = database
+      .prepare("SELECT id FROM users WHERE id=?")
+      .get(userId) as { id?: string } | undefined;
+    if (!user) {
+      database.exec("ROLLBACK");
+      return { ok: false as const, reason: "NOT_FOUND" };
+    }
+
+    database
+      .prepare("UPDATE users SET password_hash=? WHERE id=?")
+      .run(hashPassword(ADMIN_RESET_PASSWORD), userId);
+    const revokedSessions = database
+      .prepare("DELETE FROM auth_sessions WHERE user_id=?")
+      .run(userId).changes;
+    recordAdminAudit("user.password_reset", "user", userId, {
+      revokedSessions,
+    });
+    database.exec("COMMIT");
+    return { ok: true as const };
+  } catch (error) {
+    try {
+      database.exec("ROLLBACK");
+    } catch {
+      // The transaction may already have been closed by SQLite.
+    }
     throw error;
   }
 }

@@ -18,6 +18,7 @@ export default async function AdminUsersPage({
   searchParams: Promise<{
     saved?: string;
     trialReset?: string;
+    passwordReset?: string;
     error?: string;
   }>;
 }) {
@@ -52,13 +53,20 @@ export default async function AdminUsersPage({
             免费体验已恢复，不影响用户已购买的次数包。
           </p>
         )}
+        {query.passwordReset && (
+          <p className="mt-6 rounded-xl bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
+            用户密码已重置为默认密码，旧登录会话已失效，请通过安全渠道告知用户。
+          </p>
+        )}
         {query.error && (
           <p className="mt-6 rounded-xl bg-red-400/10 px-4 py-3 text-sm text-red-200">
             {query.error === "TRIAL_IN_PROGRESS"
               ? "该用户有正在生成的免费体验任务，暂时不能重置。"
               : query.error === "NOT_PERSONAL"
                 ? "只有个人账号可以重置免费体验。"
-                : "额度不能低于本月已使用和预留数量。"}
+                : query.error === "NOT_FOUND"
+                  ? "用户不存在。"
+                  : "额度不能低于本月已使用和预留数量。"}
           </p>
         )}
         <section className="mt-7 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
@@ -142,6 +150,14 @@ export default async function AdminUsersPage({
                               </button>
                             </form>
                           )}
+                          <form
+                            action={`/api/admin/users/${String(user.id)}/password`}
+                            method="post"
+                          >
+                            <button className="rounded-lg border border-red-300/40 px-3 py-2 font-medium text-red-200 hover:bg-red-300/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-200">
+                              重置密码
+                            </button>
+                          </form>
                         </div>
                       </td>
                     </tr>
@@ -157,7 +173,7 @@ export default async function AdminUsersPage({
             <div>
               <h2 className="text-lg font-semibold">管理审计</h2>
               <p className="mt-1 text-sm text-white/45">
-                记录额度和模型配置变更。
+                记录额度、密码和模型配置变更。
               </p>
             </div>
           </div>

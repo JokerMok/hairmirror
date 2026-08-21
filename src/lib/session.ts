@@ -68,16 +68,50 @@ export function isInternalRequest(request: NextRequest) {
   );
 }
 
+function requestOriginForRedirect(request: Request) {
+  const baseUrl = new URL(request.url);
+  const protocolHeader = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",", 1)[0]
+    .trim();
+  const protocol =
+    protocolHeader === "http" || protocolHeader === "https"
+      ? protocolHeader
+      : baseUrl.protocol.replace(":", "");
+  const hostHeaders = [
+    request.headers.get("x-forwarded-host"),
+    request.headers.get("host"),
+  ].filter((value): value is string => Boolean(value));
+  for (const hostHeader of hostHeaders) {
+    try {
+      const candidate = new URL(`${protocol}://${hostHeader.trim()}`);
+      if (candidate.hostname.endsWith(".trycloudflare.com"))
+        return candidate;
+    } catch {
+      // Ignore malformed proxy headers and continue with the next source.
+    }
+  }
+  return baseUrl;
+}
+
 export function safeRedirectUrl(request: Request, path: string) {
   if (!path.startsWith("/") || path.startsWith("//"))
     throw new Error("INVALID_REDIRECT_PATH");
+  const requestOrigin = requestOriginForRedirect(request);
   const configuredOrigin = process.env.PUBLIC_APP_URL?.trim();
   const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
-  const origin = configuredOrigin
-    ? new URL(configuredOrigin).origin
-    : railwayDomain
-      ? new URL(`https://${railwayDomain}`).origin
-      : new URL(request.url).origin;
+  const configuredUrl = configuredOrigin ? new URL(configuredOrigin) : null;
+  const isQuickTunnel = requestOrigin.hostname.endsWith(".trycloudflare.com");
+  const configuredIsQuickTunnel =
+    configuredUrl?.hostname.endsWith(".trycloudflare.com") ?? false;
+  const origin =
+    isQuickTunnel && (!configuredUrl || configuredIsQuickTunnel)
+      ? requestOrigin.origin
+      : configuredUrl
+        ? configuredUrl.origin
+        : railwayDomain
+          ? new URL(`https://${railwayDomain}`).origin
+          : requestOrigin.origin;
   const url = new URL(path, origin);
   if (url.hostname === "0.0.0.0" || url.hostname === "[::]")
     url.hostname = "127.0.0.1";
