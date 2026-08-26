@@ -67,6 +67,18 @@ export async function POST(request: NextRequest) {
     idempotencyHeader && /^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyHeader)
       ? idempotencyHeader
       : null;
+  if (!user) return respond({ error: "AUTH_REQUIRED" }, 401);
+  const parsed = schema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    const preferenceError = parsed.error.issues
+      .map((issue) => issue.message)
+      .find((message) =>
+        ["TARGET_HAIR_COLOR_REQUIRED", "CUSTOM_HAIR_COLOR_REQUIRED"].includes(message),
+      );
+    if (preferenceError)
+      return respond({ error: preferenceError }, 422);
+    return respond({ error: "INVALID_INPUT" }, 400);
+  }
   if (validIdempotencyKey) {
     const existing = findIdempotentTask(identity, validIdempotencyKey);
     if (existing) {
@@ -86,11 +98,8 @@ export async function POST(request: NextRequest) {
         );
     }
   }
-  if (!user) return respond({ error: "AUTH_REQUIRED" }, 401);
   if (!allowGenerationRequest(request, identity))
     return respond({ error: "RATE_LIMITED" }, 429);
-  const parsed = schema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return respond({ error: "INVALID_INPUT" }, 400);
   const active = getActiveModelConfig();
   if (!active) return respond({ error: "MODEL_UNAVAILABLE" }, 503);
   if (active.provider === "runninghub" && !parsed.data.imageDataUrl)

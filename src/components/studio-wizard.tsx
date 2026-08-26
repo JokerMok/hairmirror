@@ -27,7 +27,10 @@ import type {
   HairGoal,
   HairLength,
 } from "@/lib/types";
-import { DEFAULT_DESIGN_PREFERENCES } from "@/lib/types";
+import {
+  DEFAULT_DESIGN_PREFERENCES,
+  getHairColorPreferenceError,
+} from "@/lib/types";
 import { HAIRSTYLE_DIRECTION_COUNT } from "@/lib/catalog";
 import {
   clearStudioDraft,
@@ -172,6 +175,7 @@ export function StudioWizard({
   const [task, setTask] = useState<DesignTask | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [hairColorError, setHairColorError] = useState("");
   const [errorAction, setErrorAction] = useState<"login" | null>(null);
   const [selected, setSelected] = useState("");
   const [resultSignal, setResultSignal] = useState("");
@@ -186,7 +190,7 @@ export function StudioWizard({
         ? preferences.customHairColor || hairColorLabels.custom
         : preferences.targetHairColor
           ? hairColorLabels[preferences.targetHairColor]
-          : t("Choose a target color", "请选择目标发色")
+          : t("Target color required", "需要选择目标发色")
       : t("Preserve original", "保持原发色");
   const [recentTasks, setRecentTasks] = useState<DesignTask[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -208,12 +212,23 @@ export function StudioWizard({
       setPreview(draft.photo);
       setConsent(draft.consent);
       setPreferences(draft.preferences);
-      setStep(draft.step);
+      const draftHairColorError = getHairColorPreferenceError(draft.preferences);
+      setStep(draftHairColorError ? 1 : draft.step);
+      if (draftHairColorError)
+        setHairColorError(
+          draftHairColorError === "CUSTOM_HAIR_COLOR_REQUIRED"
+            ? isZh
+              ? "请填写自定义发色后继续。"
+              : "Enter a custom color before continuing."
+            : isZh
+              ? "请选择目标发色后继续。"
+              : "Choose a target color before continuing.",
+        );
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isZh]);
   const activeTaskId = task?.id;
   const activeTaskStatus = task?.status;
   useEffect(() => {
@@ -263,6 +278,19 @@ export function StudioWizard({
       setError("");
     };
     reader.readAsDataURL(file);
+  }
+  function confirmPreferences() {
+    const validationError = getHairColorPreferenceError(preferences);
+    if (validationError) {
+      setHairColorError(
+        validationError === "CUSTOM_HAIR_COLOR_REQUIRED"
+          ? t("Enter a custom color before continuing.", "请填写自定义发色后继续。")
+          : t("Choose a target color before continuing.", "请选择目标发色后继续。"),
+      );
+      return;
+    }
+    setHairColorError("");
+    setStep(2);
   }
   async function generate() {
     setLoading(true);
@@ -360,6 +388,7 @@ export function StudioWizard({
     setPreferences(initial);
     setStep(0);
     setError("");
+    setHairColorError("");
     clearStudioDraft();
   }
   async function chooseVariant(variantId: string) {
@@ -875,21 +904,22 @@ export function StudioWizard({
                       ["change", t("Change color", "改变发色")],
                     ]}
                     value={preferences.colorMode}
-                    onChange={(v) =>
+                    onChange={(v) => {
                       setPreferences({
                         ...preferences,
                         colorMode: v as DesignPreferences["colorMode"],
                         targetHairColor: undefined,
                         customHairColor: undefined,
-                      })
-                    }
+                      });
+                      setHairColorError("");
+                    }}
                   />
                   {preferences.colorMode === "change" && (
                     <div className="mt-3 space-y-3">
                       <select
                         aria-label={t("Target hair color", "目标发色")}
                         value={preferences.targetHairColor ?? ""}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setPreferences({
                             ...preferences,
                             targetHairColor: event.target.value
@@ -898,9 +928,10 @@ export function StudioWizard({
                             customHairColor:
                               event.target.value === "custom"
                                 ? preferences.customHairColor
-                                : undefined,
-                          })
-                        }
+                              : undefined,
+                          });
+                          setHairColorError("");
+                        }}
                         className="w-full rounded-xl border border-[#cfd7d2] bg-white px-4 py-3"
                       >
                         <option value="">
@@ -912,16 +943,22 @@ export function StudioWizard({
                           </option>
                         ))}
                       </select>
+                      {hairColorError && (
+                        <p className="text-sm text-red-600" role="alert">
+                          {hairColorError}
+                        </p>
+                      )}
                       {preferences.targetHairColor === "custom" && (
                         <input
                           aria-label={t("Custom hair color", "自定义发色")}
                           value={preferences.customHairColor ?? ""}
-                          onChange={(event) =>
+                          onChange={(event) => {
                             setPreferences({
                               ...preferences,
                               customHairColor: event.target.value,
-                            })
-                          }
+                            });
+                            setHairColorError("");
+                          }}
                           placeholder={t(
                             "Describe the target color",
                             "描述目标发色",
@@ -958,7 +995,7 @@ export function StudioWizard({
               </div>
               <Nav
                 onBack={() => setStep(0)}
-                onNext={() => setStep(2)}
+                onNext={confirmPreferences}
                 backLabel={t("Back", "上一步")}
                 nextLabel={t("Confirm preferences", "确认条件")}
               />

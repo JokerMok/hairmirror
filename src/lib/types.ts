@@ -27,6 +27,10 @@ export const HAIR_COLOR_PRESETS: readonly HairColorPreset[] = [
   "custom",
 ];
 
+export type HairColorPreferenceErrorCode =
+  | "TARGET_HAIR_COLOR_REQUIRED"
+  | "CUSTOM_HAIR_COLOR_REQUIRED";
+
 export interface HairstyleTemplate {
   id: string;
   name: string;
@@ -165,12 +169,27 @@ export function targetHairColorText(
   }[preferences.targetHairColor];
 }
 
+export function getHairColorPreferenceError(
+  preferences: Pick<
+    DesignPreferences,
+    "colorMode" | "targetHairColor" | "customHairColor"
+  >,
+): HairColorPreferenceErrorCode | null {
+  if (preferences.colorMode !== "change") return null;
+  if (!isHairColorPreset(preferences.targetHairColor))
+    return "TARGET_HAIR_COLOR_REQUIRED";
+  if (
+    preferences.targetHairColor === "custom" &&
+    !preferences.customHairColor?.trim()
+  )
+    return "CUSTOM_HAIR_COLOR_REQUIRED";
+  return null;
+}
+
 export function hasValidHairColorPreference(
   preferences: Pick<DesignPreferences, "colorMode" | "targetHairColor" | "customHairColor">,
 ) {
-  if (preferences.colorMode === "preserve") return true;
-  if (!preferences.targetHairColor) return false;
-  return preferences.targetHairColor !== "custom" || Boolean(preferences.customHairColor?.trim());
+  return getHairColorPreferenceError(preferences) === null;
 }
 
 export interface DesignVariant {
